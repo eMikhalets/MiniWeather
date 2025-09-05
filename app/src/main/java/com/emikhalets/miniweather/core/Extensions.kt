@@ -13,3 +13,9 @@ fun Double?.roundToIntOrDash(): String {
 }
 
 fun formatDoubleOneDigit(value: Double): String = String.format(Locale.US, "%.1f", value)
+
+sealed interface LoadState {
+    data object Idle : LoadState
+    data object Loading : LoadState
+    data class Error(val message: String) : LoadState
+}

@@ -1,5 +1,6 @@
 package com.emikhalets.miniweather.ui.weather
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,17 +25,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.emikhalets.miniweather.R
+import com.emikhalets.miniweather.core.LoadState
 import com.emikhalets.miniweather.core.formatDoubleOneDigit
 import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
@@ -57,34 +58,35 @@ fun WeatherScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var query by rememberSaveable { mutableStateOf("") }
-
     ScreenRoot(
         state = state,
-        query = query,
-        onQueryChange = { query = it },
+        onQueryChange = viewModel::setQuery,
         onSearchCity = {},
         onLocationClick = {},
-        onRetry = {},
+        onRetryClick = viewModel::getWeather,
+        onPullRefresh = viewModel::getWeather,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScreenRoot(
-    state: WeatherState,
-    query: String,
+    state: WeatherUiState,
+    onPullRefresh: () -> Unit,
     onQueryChange: (String) -> Unit,
     onSearchCity: (String) -> Unit,
     onLocationClick: () -> Unit,
-    onRetry: () -> Unit,
+    onRetryClick: () -> Unit,
 ) {
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.weather)) },
                 actions = {
-                    IconButton(onClick = onLocationClick) {
+                    // TODO: set location feature
+                    IconButton(onClick = onLocationClick, enabled = false) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = stringResource(R.string.my_location)
@@ -99,45 +101,55 @@ private fun ScreenRoot(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-            ) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.enter_city)) },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onSearchCity(query.trim()) },
-                            enabled = query.isNotBlank()
-                        ) { Icon(Icons.Default.Search, null) }
-                    }
-                )
+            PullToRefreshBox(state.refreshing == LoadState.Loading, onRefresh = onPullRefresh) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                ) {
+                    OutlinedTextField(
+                        value = state.query,
+                        onValueChange = onQueryChange,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.enter_city)) },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { onSearchCity(state.query.trim()) },
+                                enabled = state.query.isNotBlank()
+                            ) { Icon(Icons.Default.Search, null) }
+                        }
+                    )
 
-                when (val state = state) {
-                    is WeatherState.Empty -> {
-                        EmptyStub()
-                    }
+                    when {
+                        state.weather == null -> {
+                            when (state.loading) {
+                                LoadState.Idle -> {
+                                    EmptyStub()
+                                }
 
-                    is WeatherState.Loading -> {
-                        LoadingSkeleton()
-                    }
+                                LoadState.Loading -> {
+                                    LoadingSkeleton()
+                                }
 
-                    is WeatherState.Error -> {
-                        ErrorStub(
-                            message = state.message,
-                            onRetry = onRetry
-                        )
-                    }
+                                is LoadState.Error -> {
+                                    ErrorStub(state.loading.message, onRetryClick)
+                                }
+                            }
+                        }
 
-                    is WeatherState.Content -> {
-                        WeatherHeroCard(state.data)
-                        DetailsGrid(state.data)
+                        else -> {
+                            WeatherHeroCard(state.weather)
+                            DetailsGrid(state.weather)
+                            if (state.refreshing is LoadState.Error) {
+                                Toast.makeText(
+                                    context,
+                                    stringResource(R.string.error_refreshing_weather),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     }
                 }
             }
@@ -198,7 +210,7 @@ private fun WeatherHeroCard(model: WeatherModel) {
 
 @Composable
 private fun DetailsGrid(model: WeatherModel) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         DetailChip(
             title = stringResource(R.string.humidity),
             value = model.humidity?.let { "${model.humidity}%" } ?: "—",
@@ -210,8 +222,7 @@ private fun DetailsGrid(model: WeatherModel) {
             modifier = Modifier.weight(1f)
         )
     }
-    Spacer(Modifier.height(8.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         model.pressure?.let {
             DetailChip(
                 title = stringResource(R.string.pressure),
@@ -278,15 +289,23 @@ private fun LoadingSkeleton() {
 
 @Composable
 private fun EmptyStub() {
-    Text(stringResource(R.string.enter_city_to_show_weather), style = MaterialTheme.typography.bodyMedium)
+    Text(
+        text = stringResource(R.string.enter_city_to_show_weather),
+        style = MaterialTheme.typography.bodyMedium
+    )
 }
 
 @Composable
-private fun ErrorStub(message: String, onRetry: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stringResource(R.string.error_value, message), color = MaterialTheme.colorScheme.error)
+private fun ErrorStub(message: String, onRetryClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = stringResource(R.string.error_value, message),
+            color = MaterialTheme.colorScheme.error
+        )
         Spacer(Modifier.height(8.dp))
-        Button(onClick = onRetry) { Text(stringResource(R.string.repeat)) }
+        Button(onClick = onRetryClick) {
+            Text(stringResource(R.string.repeat))
+        }
     }
 }
 
@@ -305,15 +324,18 @@ private fun Preview1() {
         pressure = 762,
         dewPoint = 12.4,
     )
-    val state = WeatherState.Content(model)
+    val state = WeatherUiState(
+        weather = model,
+        query = "Лондон"
+    )
     MiniWeatherTheme {
         ScreenRoot(
             state = state,
-            query = "",
             onQueryChange = {},
             onSearchCity = {},
             onLocationClick = {},
-            onRetry = {},
+            onRetryClick = {},
+            onPullRefresh = {},
         )
     }
 }
@@ -333,15 +355,31 @@ private fun Preview2() {
         pressure = 762,
         dewPoint = 12.4,
     )
-    val state = WeatherState.Content(model)
+    val state = WeatherUiState(weather = model)
     MiniWeatherTheme {
         ScreenRoot(
             state = state,
-            query = "",
             onQueryChange = {},
             onSearchCity = {},
             onLocationClick = {},
-            onRetry = {},
+            onRetryClick = {},
+            onPullRefresh = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun Preview3() {
+    val state = WeatherUiState(loading = LoadState.Error("Ошибка загрузки"))
+    MiniWeatherTheme {
+        ScreenRoot(
+            state = state,
+            onQueryChange = {},
+            onSearchCity = {},
+            onLocationClick = {},
+            onRetryClick = {},
+            onPullRefresh = {},
         )
     }
 }
