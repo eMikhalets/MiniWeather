@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.coil)
 
     // Utils
     implementation(libs.google.hilt.android)
@@ -80,6 +81,7 @@ dependencies {
     implementation(libs.squareup.logging)
     implementation(libs.jetbrains.serialization)
     implementation(libs.jakewharton.retrofit2.converter)
+    implementation(libs.androidx.hilt.compose)
 
     // Testing
     testImplementation(libs.junit)
