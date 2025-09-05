@@ -383,3 +383,19 @@ private fun Preview3() {
         )
     }
 }
+
+@Preview
+@Composable
+private fun Preview4() {
+    val state = WeatherUiState(loading = LoadState.Idle)
+    MiniWeatherTheme {
+        ScreenRoot(
+            state = state,
+            onQueryChange = {},
+            onSearchCity = {},
+            onLocationClick = {},
+            onRetryClick = {},
+            onPullRefresh = {},
+        )
+    }
+}
