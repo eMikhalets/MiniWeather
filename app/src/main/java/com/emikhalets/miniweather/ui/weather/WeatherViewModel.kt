@@ -23,7 +23,7 @@ class WeatherViewModel @Inject constructor(
     enum class Mode { Idle, Load, Refresh }
 
     private val _uiState: MutableStateFlow<WeatherUiState> = MutableStateFlow(WeatherUiState())
-    val uiState get(): StateFlow<WeatherUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<WeatherUiState> get() = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
 
@@ -110,5 +110,9 @@ class WeatherViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun consumeRefreshState() {
+        _uiState.update { it.copy(refreshing = LoadState.Idle) }
     }
 }
