@@ -235,7 +235,6 @@ private fun ScreenRoot(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(16.dp)
-                            .padding(bottom = 16.dp)
                     )
 
                     if (showSheet) {
@@ -393,10 +392,35 @@ private fun LoadingSkeleton() {
             Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .padding(top = 8.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(shimmer)
         )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+        }
     }
 }
 
@@ -430,7 +454,20 @@ private fun SavedCitiesRow(
     modifier: Modifier = Modifier,
     chipSpacing: Dp = 8.dp,
 ) {
-    SubcomposeLayout(modifier) { constraints ->
+    SubcomposeLayout(
+        modifier
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        Pair(0.0f, Color.Transparent),
+                        Pair(0.2f, Color.White),
+                        Pair(0.8f, Color.White),
+                        Pair(1.0f, Color.Transparent)
+                    ),
+                )
+            )
+            .padding(vertical = 8.dp)
+    ) { constraints ->
         val spacingPx = chipSpacing.roundToPx()
         val maxW = constraints.maxWidth
 
@@ -544,15 +581,19 @@ private fun HourlyForecastRow(forecast: ForecastModel) {
     val hours = remember(forecast) { forecast.hours.take(8) } // 8 точек * 3 часа = 24ч
     if (hours.isEmpty()) return
 
-    Text(
-        text = stringResource(R.string.next_24h),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(horizontal = 16.dp)
-    )
-
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(hours) { hour ->
-            HourCard(hour = hour, tzOffsetSec = forecast.timeOffset)
+    Column {
+        Text(
+            text = stringResource(R.string.next_24h),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(Modifier.height(6.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(bottom = 80.dp)
+        ) {
+            items(hours) { hour ->
+                HourCard(hour = hour, tzOffsetSec = forecast.timeOffset)
+            }
         }
     }
 }
@@ -614,7 +655,7 @@ private fun Preview1() {
     val hours = (0 until 8).map { i ->
         ForecastModel.Hour(
             timeEpoch = System.currentTimeMillis() / 1000 + i * 3 * 3600,
-            temperature = 15.0 + i,                         // 15..22 °C
+            temperature = 15.0 + i,
             iconUrl = "",
             popPercent = listOf(10, 20, 30, 40, 50, 40, 30, 20)[i],
             precipMm3h = if (i in 4..6) listOf(0.2, 0.6, 1.1)[i - 4] else null
@@ -628,6 +669,7 @@ private fun Preview1() {
         weather = weather,
         forecast = forecast,
         query = "Лондон",
+        savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
     )
     MiniWeatherTheme {
         ScreenRoot(
@@ -661,7 +703,7 @@ private fun Preview2() {
     val hours = (0 until 8).map { i ->
         ForecastModel.Hour(
             timeEpoch = System.currentTimeMillis() / 1000 + i * 3 * 3600,
-            temperature = 15.0 + i,                         // 15..22 °C
+            temperature = 15.0 + i,
             iconUrl = "",
             popPercent = listOf(10, 20, 30, 40, 50, 40, 30, 20)[i],
             precipMm3h = if (i in 4..6) listOf(0.2, 0.6, 1.1)[i - 4] else null
