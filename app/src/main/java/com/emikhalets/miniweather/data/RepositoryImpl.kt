@@ -2,6 +2,7 @@ package com.emikhalets.miniweather.data
 
 import com.emikhalets.miniweather.data.local.SavedCitiesStore
 import com.emikhalets.miniweather.data.remote.WeatherApi
+import com.emikhalets.miniweather.domain.model.ForecastModel
 import com.emikhalets.miniweather.domain.model.Repository
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import kotlinx.coroutines.Dispatchers
@@ -37,15 +38,26 @@ class RepositoryImpl @Inject constructor(
                 }
             )
 
-    override suspend fun getByCity(city: String): Result<WeatherModel> = invoke {
-        weatherApi.getWeatherByCity(city.trim()).mapToModel()
+    override suspend fun getByCity(city: String): Result<WeatherModel> {
+        return invoke { weatherApi.getWeatherByCity(city.trim()).mapToModel() }
     }
 
     override suspend fun getByLocation(
         latitude: Double,
         longitude: Double,
-    ): Result<WeatherModel> = invoke {
-        weatherApi.getWeatherByLocation(latitude, longitude).mapToModel()
+    ): Result<WeatherModel> {
+        return invoke { weatherApi.getWeatherByLocation(latitude, longitude).mapToModel() }
+    }
+
+    override suspend fun getForecastByCity(city: String): Result<ForecastModel> {
+        return invoke { weatherApi.getForecastByCity(city.trim()).mapToModel() }
+    }
+
+    override suspend fun getForecastByLocation(
+        latitude: Double,
+        longitude: Double,
+    ): Result<ForecastModel> {
+        return invoke { weatherApi.getForecastByLocation(latitude, longitude).mapToModel() }
     }
 
     override fun getSavedCities(): List<String> {

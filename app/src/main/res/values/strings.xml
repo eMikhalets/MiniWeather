@@ -18,4 +18,5 @@
     <string name="second_format_hour_minute">%dч %02dм</string>
     <string name="second_format_minute">%dм</string>
     <string name="pressure_value">%1$d м.р.с.</string>
+    <string name="next_24h">Ближайшие 24 часа</string>
 </resources>

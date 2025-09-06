@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +71,7 @@ import com.emikhalets.miniweather.core.formatDoubleOneDigit
 import com.emikhalets.miniweather.core.rememberShimmerBrush
 import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
+import com.emikhalets.miniweather.domain.model.ForecastModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import timber.log.Timber
 import java.text.SimpleDateFormat
@@ -115,7 +118,6 @@ private fun ScreenRoot(
     onLocationClick: () -> Unit,
     onRetryClick: () -> Unit,
 ) {
-    val context = LocalContext.current
     val focus = LocalFocusManager.current
 
     Scaffold(
@@ -144,7 +146,7 @@ private fun ScreenRoot(
             ) {
                 Box(Modifier.fillMaxSize()) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
@@ -191,12 +193,12 @@ private fun ScreenRoot(
                                 }
                             }
                         } else {
-                            when {
-                                state.loading is LoadState.Loading -> {
+                            when (state.loading) {
+                                is LoadState.Loading -> {
                                     LoadingSkeleton()
                                 }
 
-                                state.loading is LoadState.Error -> {
+                                is LoadState.Error -> {
                                     ErrorStub(state.loading.message, onRetryClick)
                                 }
 
@@ -210,6 +212,10 @@ private fun ScreenRoot(
                                     )
                                 }
                             }
+                        }
+
+                        state.forecast?.let {
+                            HourlyForecastRow(it)
                         }
                     }
 
@@ -229,7 +235,6 @@ private fun ScreenRoot(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(16.dp)
-                            .padding(bottom = 16.dp)
                     )
 
                     if (showSheet) {
@@ -387,10 +392,35 @@ private fun LoadingSkeleton() {
             Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .padding(top = 8.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(shimmer)
         )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+            Box(
+                Modifier
+                    .size(72.dp, 120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
+        }
     }
 }
 
@@ -424,7 +454,20 @@ private fun SavedCitiesRow(
     modifier: Modifier = Modifier,
     chipSpacing: Dp = 8.dp,
 ) {
-    SubcomposeLayout(modifier) { constraints ->
+    SubcomposeLayout(
+        modifier
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        Pair(0.0f, Color.Transparent),
+                        Pair(0.2f, Color.White),
+                        Pair(0.8f, Color.White),
+                        Pair(1.0f, Color.Transparent)
+                    ),
+                )
+            )
+            .padding(vertical = 8.dp)
+    ) { constraints ->
         val spacingPx = chipSpacing.roundToPx()
         val maxW = constraints.maxWidth
 
@@ -500,7 +543,6 @@ private fun SavedCitiesRow(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HiddenCitiesSheet(
@@ -534,11 +576,69 @@ private fun HiddenCitiesSheet(
     }
 }
 
+@Composable
+private fun HourlyForecastRow(forecast: ForecastModel) {
+    val hours = remember(forecast) { forecast.hours.take(8) } // 8 точек * 3 часа = 24ч
+    if (hours.isEmpty()) return
+
+    Column {
+        Text(
+            text = stringResource(R.string.next_24h),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(Modifier.height(6.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(bottom = 80.dp)
+        ) {
+            items(hours) { hour ->
+                HourCard(hour = hour, tzOffsetSec = forecast.timeOffset)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HourCard(hour: ForecastModel.Hour, tzOffsetSec: Int) {
+    val time = remember(hour.timeEpoch, tzOffsetSec) { formatTime(hour.timeEpoch, tzOffsetSec) }
+    Column(
+        Modifier
+            .width(72.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = time,
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(Modifier.height(4.dp))
+        AsyncImage(
+            model = hour.iconUrl,
+            contentDescription = null,
+            modifier = Modifier.size(36.dp)
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = hour.temperature?.roundToIntOrDash()?.plus("°") ?: "—",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        hour.popPercent?.let {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "$it%",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
 
 @Preview
 @Composable
 private fun Preview1() {
-    val model = WeatherModel(
+    val weather = WeatherModel(
         city = "Москва",
         temperature = 21.0,
         feelsLike = 18.0,
@@ -552,9 +652,24 @@ private fun Preview1() {
         sunset = System.currentTimeMillis() + 300000,
         timeOffset = 3,
     )
+    val hours = (0 until 8).map { i ->
+        ForecastModel.Hour(
+            timeEpoch = System.currentTimeMillis() / 1000 + i * 3 * 3600,
+            temperature = 15.0 + i,
+            iconUrl = "",
+            popPercent = listOf(10, 20, 30, 40, 50, 40, 30, 20)[i],
+            precipMm3h = if (i in 4..6) listOf(0.2, 0.6, 1.1)[i - 4] else null
+        )
+    }
+    val forecast = ForecastModel(
+        timeOffset = 3 * 3600,
+        hours = hours
+    )
     val state = WeatherUiState(
-        weather = model,
+        weather = weather,
+        forecast = forecast,
         query = "Лондон",
+        savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
     )
     MiniWeatherTheme {
         ScreenRoot(
@@ -571,7 +686,7 @@ private fun Preview1() {
 @Preview
 @Composable
 private fun Preview2() {
-    val model = WeatherModel(
+    val weather = WeatherModel(
         city = "Москва",
         temperature = 15.0,
         feelsLike = 18.0,
@@ -585,8 +700,22 @@ private fun Preview2() {
         sunset = System.currentTimeMillis() + 300000,
         timeOffset = 3,
     )
+    val hours = (0 until 8).map { i ->
+        ForecastModel.Hour(
+            timeEpoch = System.currentTimeMillis() / 1000 + i * 3 * 3600,
+            temperature = 15.0 + i,
+            iconUrl = "",
+            popPercent = listOf(10, 20, 30, 40, 50, 40, 30, 20)[i],
+            precipMm3h = if (i in 4..6) listOf(0.2, 0.6, 1.1)[i - 4] else null
+        )
+    }
+    val forecast = ForecastModel(
+        timeOffset = 3 * 3600,
+        hours = hours
+    )
     val state = WeatherUiState(
-        weather = model,
+        weather = weather,
+        forecast = forecast,
         savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
     )
     MiniWeatherTheme {

@@ -85,9 +85,7 @@ fun DaylightArc(
     val sunRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Полукруг: сверху, левый край = рассвет, правый = закат
@@ -184,7 +182,7 @@ fun DaylightArc(
     }
 }
 
-private fun formatTime(epochSec: Long, tzOffsetSec: Int?): String {
+fun formatTime(epochSec: Long, tzOffsetSec: Int?): String {
     val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     val tz = tzOffsetSec?.let { seconds ->
         val sign = if (seconds >= 0) "+" else "-"
