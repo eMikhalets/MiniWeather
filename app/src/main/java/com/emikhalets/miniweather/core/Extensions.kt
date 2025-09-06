@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import timber.log.Timber
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -20,6 +21,7 @@ fun Double?.roundToIntOrDash(): String {
     return try {
         roundToInt().toString()
     } catch (e: Exception) {
+        Timber.e(e)
         "—"
     }
 }
