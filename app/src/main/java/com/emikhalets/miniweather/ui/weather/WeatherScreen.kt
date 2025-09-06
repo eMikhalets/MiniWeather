@@ -41,11 +41,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,6 +75,7 @@ import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
 import com.emikhalets.miniweather.domain.model.ForecastModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -93,6 +96,7 @@ fun WeatherScreen(
                 context.getString(R.string.error_refreshing_weather),
                 Toast.LENGTH_SHORT
             ).show()
+            viewModel.consumeRefreshState()
         }
     }
 
@@ -119,6 +123,8 @@ private fun ScreenRoot(
     onRetryClick: () -> Unit,
 ) {
     val focus = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val refreshState = rememberPullToRefreshState()
 
     Scaffold(
         topBar = {
@@ -141,8 +147,17 @@ private fun ScreenRoot(
                 .padding(padding)
         ) {
             PullToRefreshBox(
+                state = refreshState,
                 isRefreshing = state.refreshing == LoadState.Loading,
-                onRefresh = onPullRefresh,
+                onRefresh = {
+                    if (state.query.isBlank()) {
+                        scope.launch {
+                            refreshState.animateToHidden()
+                        }
+                    } else {
+                        onPullRefresh()
+                    }
+                }
             ) {
                 Box(Modifier.fillMaxSize()) {
                     Column(
@@ -178,31 +193,19 @@ private fun ScreenRoot(
                             }
                         )
 
-                        if (state.weather == null) {
-                            when (state.loading) {
-                                LoadState.Idle -> {
-                                    EmptyStub()
-                                }
-
-                                LoadState.Loading -> {
-                                    LoadingSkeleton()
-                                }
-
-                                is LoadState.Error -> {
-                                    ErrorStub(state.loading.message, onRetryClick)
-                                }
+                        when (state.loading) {
+                            is LoadState.Error -> {
+                                ErrorStub(state.loading.message, onRetryClick)
                             }
-                        } else {
-                            when (state.loading) {
-                                is LoadState.Loading -> {
-                                    LoadingSkeleton()
-                                }
 
-                                is LoadState.Error -> {
-                                    ErrorStub(state.loading.message, onRetryClick)
-                                }
+                            LoadState.Loading -> {
+                                LoadingSkeleton()
+                            }
 
-                                else -> {
+                            LoadState.Idle -> {
+                                if (state.weather == null) {
+                                    EmptyStub()
+                                } else {
                                     WeatherHeroCard(state.weather)
                                     DetailsGrid(state.weather)
                                     DaylightArc(
@@ -213,6 +216,32 @@ private fun ScreenRoot(
                                 }
                             }
                         }
+
+//                        if (state.weather == null) {
+//                            when (state.loading) {
+//                                LoadState.Idle -> {
+//                                }
+//
+//                                LoadState.Loading -> {
+//                                }
+//
+//                                is LoadState.Error -> {
+//                                }
+//                            }
+//                        } else {
+//                            when (state.loading) {
+//                                is LoadState.Loading -> {
+//                                    LoadingSkeleton()
+//                                }
+//
+//                                is LoadState.Error -> {
+//                                    ErrorStub(state.loading.message, onRetryClick)
+//                                }
+//
+//                                else -> {
+//                                }
+//                            }
+//                        }
 
                         state.forecast?.let {
                             HourlyForecastRow(it)
