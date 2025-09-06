@@ -203,6 +203,11 @@ private fun ScreenRoot(
                                 else -> {
                                     WeatherHeroCard(state.weather)
                                     DetailsGrid(state.weather)
+                                    DaylightArc(
+                                        sunriseEpochSec = state.weather.sunrise,
+                                        sunsetEpochSec = state.weather.sunset,
+                                        timezoneOffset = state.weather.timeOffset
+                                    )
                                 }
                             }
                         }
@@ -306,31 +311,19 @@ private fun DetailsGrid(model: WeatherModel) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         DetailChip(
             title = stringResource(R.string.humidity),
-            value = model.humidity?.let { "${model.humidity}%" } ?: "—",
+            value = model.humidity?.let { "${it}%" } ?: "—",
             modifier = Modifier.weight(1f)
         )
         DetailChip(
             title = stringResource(R.string.wind),
-            value = model.windSpeed?.let { "${formatDoubleOneDigit(model.windSpeed)} м/с" }
-                ?: "—",
+            value = model.windSpeed?.let { "${formatDoubleOneDigit(it)} м/с" } ?: "—",
             modifier = Modifier.weight(1f)
         )
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        model.pressure?.let {
-            DetailChip(
-                title = stringResource(R.string.pressure),
-                value = "$it",
-                modifier = Modifier.weight(1f)
-            )
-        }
-        model.dewPoint?.let {
-            DetailChip(
-                title = stringResource(R.string.dew_point),
-                value = "${formatDoubleOneDigit(it)}°",
-                modifier = Modifier.weight(1f)
-            )
-        }
+        DetailChip(
+            title = stringResource(R.string.pressure),
+            value = model.pressure?.let { stringResource(R.string.pressure_value, it) } ?: "—",
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -343,12 +336,15 @@ private fun DetailChip(title: String, value: String, modifier: Modifier = Modifi
             .padding(14.dp)
     ) {
         Text(
-            title,
+            text = title,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(6.dp))
-        Text(value, style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 }
 
@@ -360,11 +356,18 @@ private fun LoadingSkeleton() {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .height(180.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(shimmer)
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(72.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
             Box(
                 Modifier
                     .weight(1f)
@@ -380,6 +383,14 @@ private fun LoadingSkeleton() {
                     .background(shimmer)
             )
         }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(shimmer)
+        )
     }
 }
 
@@ -537,12 +548,13 @@ private fun Preview1() {
         iconUrl = "",
         updatedAt = System.currentTimeMillis(),
         pressure = 762,
-        dewPoint = 12.4,
+        sunrise = System.currentTimeMillis() - 500000,
+        sunset = System.currentTimeMillis() + 300000,
+        timeOffset = 3,
     )
     val state = WeatherUiState(
         weather = model,
         query = "Лондон",
-        loading = LoadState.Loading
     )
     MiniWeatherTheme {
         ScreenRoot(
@@ -569,7 +581,9 @@ private fun Preview2() {
         iconUrl = "",
         updatedAt = System.currentTimeMillis(),
         pressure = 762,
-        dewPoint = 12.4,
+        sunrise = 0,
+        sunset = System.currentTimeMillis() + 300000,
+        timeOffset = 3,
     )
     val state = WeatherUiState(
         weather = model,

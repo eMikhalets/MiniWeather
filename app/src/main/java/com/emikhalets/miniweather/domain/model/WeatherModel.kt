@@ -10,5 +10,7 @@ data class WeatherModel(
     val iconUrl: String = "",
     val updatedAt: Long = 0,
     val pressure: Int? = null,
-    val dewPoint: Double? = null,
+    val sunrise: Long,
+    val sunset: Long,
+    val timeOffset: Int?,
 )
