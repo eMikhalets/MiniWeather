@@ -13,4 +13,9 @@
     <string name="enter_city_to_show_weather">Введите город, чтобы показать погоду</string>
     <string name="error_value">Ошибка: %1$s</string>
     <string name="error_refreshing_weather">Не удалось обновить</string>
+    <string name="before_sunrise">До рассвета</string>
+    <string name="after_sunset">После заката</string>
+    <string name="before_sunset_value">"До заката: "</string>
+    <string name="second_format_hour_minute">%dч %02dм</string>
+    <string name="second_format_minute">%dм</string>
 </resources>
