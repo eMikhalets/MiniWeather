@@ -2,9 +2,19 @@ package com.emikhalets.miniweather.domain.model
 
 interface Repository {
 
+    // Current weather
+
     suspend fun getByCity(city: String): Result<WeatherModel>
 
     suspend fun getByLocation(latitude: Double, longitude: Double): Result<WeatherModel>
+
+    // Forecast weather
+
+    suspend fun getForecastByCity(city: String): Result<ForecastModel>
+
+    suspend fun getForecastByLocation(latitude: Double, longitude: Double): Result<ForecastModel>
+
+    // Saved cities
 
     fun getSavedCities(): List<String>
 

@@ -32,6 +32,8 @@ data class ForecastItemDto(
     val pop: Double? = null,
     @SerialName("rain")
     val rain: Rain3HDto? = null,
+    @SerialName("snow")
+    val snow: Snow3HDto? = null,
     @SerialName("sys")
     val sys: ForecastSysDto? = null,
     @SerialName("visibility")
@@ -44,6 +46,12 @@ data class ForecastItemDto(
 
 @Serializable
 data class Rain3HDto(
+    @SerialName("3h")
+    val h: Double? = null,
+)
+
+@Serializable
+data class Snow3HDto(
     @SerialName("3h")
     val h: Double? = null,
 )
