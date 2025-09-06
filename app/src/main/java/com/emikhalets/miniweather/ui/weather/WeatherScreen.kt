@@ -306,31 +306,19 @@ private fun DetailsGrid(model: WeatherModel) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         DetailChip(
             title = stringResource(R.string.humidity),
-            value = model.humidity?.let { "${model.humidity}%" } ?: "—",
+            value = model.humidity?.let { "${it}%" } ?: "—",
             modifier = Modifier.weight(1f)
         )
         DetailChip(
             title = stringResource(R.string.wind),
-            value = model.windSpeed?.let { "${formatDoubleOneDigit(model.windSpeed)} м/с" }
-                ?: "—",
+            value = model.windSpeed?.let { "${formatDoubleOneDigit(it)} м/с" } ?: "—",
             modifier = Modifier.weight(1f)
         )
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        model.pressure?.let {
-            DetailChip(
-                title = stringResource(R.string.pressure),
-                value = "$it",
-                modifier = Modifier.weight(1f)
-            )
-        }
-        model.dewPoint?.let {
-            DetailChip(
-                title = stringResource(R.string.dew_point),
-                value = "${formatDoubleOneDigit(it)}°",
-                modifier = Modifier.weight(1f)
-            )
-        }
+        DetailChip(
+            title = stringResource(R.string.pressure),
+            value = model.pressure?.let { "$it" } ?: "—",
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -343,12 +331,15 @@ private fun DetailChip(title: String, value: String, modifier: Modifier = Modifi
             .padding(14.dp)
     ) {
         Text(
-            title,
+            text = title,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(6.dp))
-        Text(value, style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 }
 
@@ -360,11 +351,18 @@ private fun LoadingSkeleton() {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .height(180.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(shimmer)
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(72.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmer)
+            )
             Box(
                 Modifier
                     .weight(1f)
@@ -537,7 +535,6 @@ private fun Preview1() {
         iconUrl = "",
         updatedAt = System.currentTimeMillis(),
         pressure = 762,
-        dewPoint = 12.4,
     )
     val state = WeatherUiState(
         weather = model,
@@ -569,7 +566,6 @@ private fun Preview2() {
         iconUrl = "",
         updatedAt = System.currentTimeMillis(),
         pressure = 762,
-        dewPoint = 12.4,
     )
     val state = WeatherUiState(
         weather = model,

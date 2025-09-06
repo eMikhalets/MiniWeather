@@ -3,7 +3,6 @@
     <string name="repeat">Повторить</string>
     <string name="humidity">Влажность</string>
     <string name="wind">Ветер</string>
-    <string name="dew_point">Точка росы</string>
     <string name="pressure">Давление</string>
     <string name="hero_city_updated_at">%1$s · обновлено %2$s</string>
     <string name="feels_like">Ощущается как %1$s°</string>

@@ -25,7 +25,6 @@ fun WeatherDto.mapToModel(): WeatherModel {
         iconUrl = firstWeather.safeIconUrl(),
         updatedAt = (dt ?: 0).toLong(),
         pressure = hPaToMmHg(main?.pressure),
-        dewPoint = null
     )
 }
 
