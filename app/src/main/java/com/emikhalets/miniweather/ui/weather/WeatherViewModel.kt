@@ -6,11 +6,13 @@ import com.emikhalets.miniweather.core.LoadState
 import com.emikhalets.miniweather.domain.model.Repository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import javax.inject.Inject
 
 @HiltViewModel
@@ -58,35 +60,55 @@ class WeatherViewModel @Inject constructor(
         _uiState.update { it.copy(loading = loadingState, refreshing = refreshingState) }
 
         loadJob = viewModelScope.launch {
-            repository.getByCity(uiState.value.query)
-                .onSuccess { data ->
-                    _uiState.update {
-                        it.copy(
-                            weather = data,
-                            loading = LoadState.Idle,
-                            refreshing = LoadState.Idle,
-                            savedCities = repository.addOrPromoteCity(query)
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    val state = LoadState.Error(error.message ?: "Ошибка")
-                    _uiState.update {
-                        when (loadingMode) {
-                            Mode.Load -> {
-                                it.copy(loading = state, refreshing = LoadState.Idle)
-                            }
+            supervisorScope {
+                val weatherDef = async { repository.getByCity(query) }
+                val forecastDef = async { repository.getForecastByCity(query) }
 
-                            Mode.Refresh -> {
-                                it.copy(loading = uiState.value.loading, refreshing = state)
+                weatherDef.await()
+                    .onSuccess { weather ->
+                        forecastDef.await()
+                            .onSuccess { forecast ->
+                                _uiState.update {
+                                    it.copy(
+                                        weather = weather,
+                                        forecast = forecast,
+                                        loading = LoadState.Idle,
+                                        refreshing = LoadState.Idle,
+                                        savedCities = repository.addOrPromoteCity(query)
+                                    )
+                                }
                             }
-
-                            Mode.Idle -> {
-                                it.copy(loading = LoadState.Idle, refreshing = LoadState.Idle)
+                            .onFailure { error ->
+                                handleError(error, loadingMode)
                             }
-                        }
                     }
+                    .onFailure { error ->
+                        forecastDef.cancel()
+                        handleError(error, loadingMode)
+                    }
+            }
+        }
+    }
+
+    private fun handleError(
+        error: Throwable,
+        loadingMode: Mode,
+    ) {
+        val state = LoadState.Error(error.message ?: "Ошибка")
+        _uiState.update {
+            when (loadingMode) {
+                Mode.Load -> {
+                    it.copy(loading = state, refreshing = LoadState.Idle)
                 }
+
+                Mode.Refresh -> {
+                    it.copy(loading = uiState.value.loading, refreshing = state)
+                }
+
+                Mode.Idle -> {
+                    it.copy(loading = LoadState.Idle, refreshing = LoadState.Idle)
+                }
+            }
         }
     }
 }
