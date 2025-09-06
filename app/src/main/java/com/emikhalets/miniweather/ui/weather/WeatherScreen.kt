@@ -53,6 +53,7 @@ import com.emikhalets.miniweather.core.formatDoubleOneDigit
 import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
 import com.emikhalets.miniweather.domain.model.WeatherModel
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -228,6 +229,9 @@ private fun WeatherHeroCard(model: WeatherModel) {
             AsyncImage(
                 model = model.iconUrl,
                 contentDescription = null,
+                onError = { error ->
+                    Timber.e(error.result.throwable)
+                },
                 modifier = Modifier.size(96.dp)
             )
         }

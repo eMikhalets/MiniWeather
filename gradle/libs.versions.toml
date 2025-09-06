@@ -38,7 +38,8 @@ squareup-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", versi
 squareup-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "squareupLogging" }
 jetbrains-serialization = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "jetbrainsSerialization" }
 jakewharton-retrofit2-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "jakewhartonRetrofit2Converter" }
-coil = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 androidx-hilt-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltCompose" }
 jakewharton-timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "jakewhartonTimber" }
 
