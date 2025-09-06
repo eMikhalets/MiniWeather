@@ -3,16 +3,8 @@ package com.emikhalets.miniweather.data
 import com.emikhalets.miniweather.data.remote.WeatherDataDto
 import com.emikhalets.miniweather.data.remote.WeatherDto
 import com.emikhalets.miniweather.domain.model.WeatherModel
+import timber.log.Timber
 import kotlin.math.roundToInt
-
-private fun WeatherDataDto?.safeDescription(): String =
-    this?.description ?: ""
-
-private fun WeatherDataDto?.safeIconUrl(): String =
-    this?.icon?.let { "https://openweathermap.org/img/wn/${it}@2x.png" }.orEmpty()
-
-private fun hPaToMmHg(hPa: Int?): Int? =
-    hPa?.let { (it * 0.75006156).roundToInt() }
 
 /**
  * OpenWeather 'current weather' → domain WeatherModel
@@ -21,6 +13,7 @@ private fun hPaToMmHg(hPa: Int?): Int? =
  * - dewPoint: в этом эндпоинте нет → оставляем null
  */
 fun WeatherDto.mapToModel(): WeatherModel {
+    Timber.d("Map Dto to Model: $this")
     val firstWeather = weather?.firstOrNull()
     return WeatherModel(
         city = name.orEmpty(),
@@ -35,3 +28,12 @@ fun WeatherDto.mapToModel(): WeatherModel {
         dewPoint = null
     )
 }
+
+private fun WeatherDataDto?.safeDescription(): String =
+    this?.description ?: ""
+
+private fun WeatherDataDto?.safeIconUrl(): String =
+    this?.icon?.let { "https://openweathermap.org/img/wn/${it}@2x.png" }.orEmpty()
+
+private fun hPaToMmHg(hPa: Int?): Int? =
+    hPa?.let { (it * 0.75006156).roundToInt() }

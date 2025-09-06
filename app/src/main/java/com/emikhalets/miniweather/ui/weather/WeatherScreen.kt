@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
@@ -20,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,7 +38,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -61,10 +66,12 @@ fun WeatherScreen(
     ScreenRoot(
         state = state,
         onQueryChange = viewModel::setQuery,
-        onSearchCity = viewModel::getWeather,
-        onLocationClick = {},
-        onRetryClick = viewModel::getWeather,
-        onPullRefresh = viewModel::getWeather,
+        onSearchCity = viewModel::search,
+        onLocationClick = {
+            // TODO: set location feature
+        },
+        onRetryClick = viewModel::search,
+        onPullRefresh = viewModel::refresh,
     )
 }
 
@@ -79,13 +86,13 @@ private fun ScreenRoot(
     onRetryClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val focus = LocalFocusManager.current
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.weather)) },
                 actions = {
-                    // TODO: set location feature
                     IconButton(onClick = onLocationClick, enabled = false) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
@@ -102,6 +109,13 @@ private fun ScreenRoot(
                 .padding(padding)
         ) {
             PullToRefreshBox(state.refreshing == LoadState.Loading, onRefresh = onPullRefresh) {
+                if (state.loading == LoadState.Loading) {
+                    LinearProgressIndicator(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                }
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier
@@ -114,9 +128,21 @@ private fun ScreenRoot(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text(stringResource(R.string.enter_city)) },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                focus.clearFocus()
+                                onSearchCity()
+                            }
+                        ),
                         trailingIcon = {
                             IconButton(
-                                onClick = onSearchCity,
+                                onClick = {
+                                    focus.clearFocus()
+                                    onSearchCity()
+                                },
                                 enabled = state.query.isNotBlank()
                             ) { Icon(Icons.Default.Search, null) }
                         }
@@ -326,7 +352,8 @@ private fun Preview1() {
     )
     val state = WeatherUiState(
         weather = model,
-        query = "Лондон"
+        query = "Лондон",
+        loading = LoadState.Loading
     )
     MiniWeatherTheme {
         ScreenRoot(

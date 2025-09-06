@@ -18,6 +18,8 @@ class WeatherViewModel @Inject constructor(
     private val repository: Repository,
 ) : ViewModel() {
 
+    enum class Mode { Idle, Load, Refresh }
+
     private val _uiState: MutableStateFlow<WeatherUiState> = MutableStateFlow(WeatherUiState())
     val uiState get(): StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
@@ -29,54 +31,55 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun getWeather() {
-        val hasData = _uiState.value.weather != null
+    // запускает индикатор загрузки
+    fun search() {
+        getWeather(Mode.Load)
+    }
+
+    // запускает индикатор pull to refresh
+    fun refresh() {
+        getWeather(Mode.Refresh)
+    }
+
+    private fun getWeather(loadingMode: Mode) {
         loadJob?.cancel()
 
-        _uiState.update {
-            normalize(
-                it.copy(
-                    loading = if (!hasData) LoadState.Loading else LoadState.Idle,
-                    refreshing = if (hasData) LoadState.Loading else LoadState.Idle
-                )
-            )
+        val (loadingState, refreshingState) = when (loadingMode) {
+            Mode.Load -> LoadState.Loading to LoadState.Idle
+            Mode.Refresh -> LoadState.Idle to LoadState.Loading
+            Mode.Idle -> LoadState.Idle to LoadState.Idle
         }
+        _uiState.update { it.copy(loading = loadingState, refreshing = refreshingState) }
+
         loadJob = viewModelScope.launch {
             repository.getByCity(uiState.value.query)
                 .onSuccess { data ->
                     _uiState.update {
-                        normalize(
-                            it.copy(
-                                weather = data,
-                                loading = LoadState.Idle,
-                                refreshing = LoadState.Idle
-                            )
+                        it.copy(
+                            weather = data,
+                            loading = LoadState.Idle,
+                            refreshing = LoadState.Idle
                         )
                     }
                 }
                 .onFailure { error ->
+                    val state = LoadState.Error(error.message ?: "Ошибка")
                     _uiState.update {
-                        normalize(
-                            it.copy(
-                                loading = if (!hasData) {
-                                    LoadState.Error(error.message ?: "Ошибка")
-                                } else {
-                                    LoadState.Idle
-                                },
-                                refreshing = if (hasData) {
-                                    LoadState.Error(error.message ?: "Ошибка")
-                                } else {
-                                    LoadState.Idle
-                                }
-                            )
-                        )
+                        when (loadingMode) {
+                            Mode.Load -> {
+                                it.copy(loading = state, refreshing = LoadState.Idle)
+                            }
+
+                            Mode.Refresh -> {
+                                it.copy(loading = LoadState.Idle, refreshing = state)
+                            }
+
+                            Mode.Idle -> {
+                                it.copy(loading = LoadState.Idle, refreshing = LoadState.Idle)
+                            }
+                        }
                     }
                 }
         }
     }
-
-    private fun normalize(state: WeatherUiState) = state.copy(
-        loading = if (state.weather == null) state.loading else LoadState.Idle,
-        refreshing = if (state.weather != null) state.refreshing else LoadState.Idle
-    )
 }

@@ -13,6 +13,7 @@ squareupRetrofit = "3.0.0"
 squareupLogging = "5.1.0"
 jetbrainsSerialization = "1.9.0"
 jakewhartonRetrofit2Converter = "1.0.0"
+jakewhartonTimber = "5.0.1"
 coil = "3.3.0"
 hiltCompose = "1.2.0"
 
@@ -39,6 +40,7 @@ jetbrains-serialization = { group = "org.jetbrains.kotlinx", name = "kotlinx-ser
 jakewharton-retrofit2-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "jakewhartonRetrofit2Converter" }
 coil = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 androidx-hilt-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltCompose" }
+jakewharton-timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "jakewhartonTimber" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

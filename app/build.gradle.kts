@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.jetbrains.serialization)
     implementation(libs.jakewharton.retrofit2.converter)
     implementation(libs.androidx.hilt.compose)
+    implementation(libs.jakewharton.timber)
 
     // Testing
     testImplementation(libs.junit)
