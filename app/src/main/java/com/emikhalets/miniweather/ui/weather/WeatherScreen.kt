@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
@@ -22,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -50,6 +51,7 @@ import coil3.compose.AsyncImage
 import com.emikhalets.miniweather.R
 import com.emikhalets.miniweather.core.LoadState
 import com.emikhalets.miniweather.core.formatDoubleOneDigit
+import com.emikhalets.miniweather.core.rememberShimmerBrush
 import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
 import com.emikhalets.miniweather.domain.model.WeatherModel
@@ -109,18 +111,15 @@ private fun ScreenRoot(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            PullToRefreshBox(state.refreshing == LoadState.Loading, onRefresh = onPullRefresh) {
-                if (state.loading == LoadState.Loading) {
-                    LinearProgressIndicator(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    )
-                }
+            PullToRefreshBox(
+                isRefreshing = state.refreshing == LoadState.Loading,
+                onRefresh = onPullRefresh
+            ) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                 ) {
                     OutlinedTextField(
@@ -290,13 +289,15 @@ private fun DetailChip(title: String, value: String, modifier: Modifier = Modifi
 
 @Composable
 private fun LoadingSkeleton() {
+    val shimmer = rememberShimmerBrush()
+
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(140.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                .background(shimmer)
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
@@ -304,14 +305,14 @@ private fun LoadingSkeleton() {
                     .weight(1f)
                     .height(72.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    .background(shimmer)
             )
             Box(
                 Modifier
                     .weight(1f)
                     .height(72.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    .background(shimmer)
             )
         }
     }
@@ -419,6 +420,22 @@ private fun Preview3() {
 @Composable
 private fun Preview4() {
     val state = WeatherUiState(loading = LoadState.Idle)
+    MiniWeatherTheme {
+        ScreenRoot(
+            state = state,
+            onQueryChange = {},
+            onSearchCity = {},
+            onLocationClick = {},
+            onRetryClick = {},
+            onPullRefresh = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun Preview5() {
+    val state = WeatherUiState(loading = LoadState.Loading)
     MiniWeatherTheme {
         ScreenRoot(
             state = state,
