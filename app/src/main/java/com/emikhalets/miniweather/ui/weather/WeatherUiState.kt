@@ -8,5 +8,5 @@ data class WeatherUiState(
     val weather: WeatherModel? = null,
     val loading: LoadState = LoadState.Idle,
     val refreshing: LoadState = LoadState.Idle,
-    val savedCities: List<String> = emptyList(),
+    val savedCities: List<String> = emptyList()
 )

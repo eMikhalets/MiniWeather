@@ -2,9 +2,11 @@ package com.emikhalets.miniweather.ui.weather
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,38 +14,51 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,6 +80,18 @@ fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    val refreshErrorMessage = (state.refreshing as? LoadState.Error)?.message
+    LaunchedEffect(refreshErrorMessage) {
+        refreshErrorMessage?.let {
+            Toast.makeText(
+                context,
+                context.getString(R.string.error_refreshing_weather),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     ScreenRoot(
         state = state,
@@ -98,7 +125,7 @@ private fun ScreenRoot(
                 actions = {
                     IconButton(onClick = onLocationClick, enabled = false) {
                         Icon(
-                            imageVector = Icons.Default.LocationOn,
+                            imageVector = Icons.Default.MyLocation,
                             contentDescription = stringResource(R.string.my_location)
                         )
                     }
@@ -113,43 +140,43 @@ private fun ScreenRoot(
         ) {
             PullToRefreshBox(
                 isRefreshing = state.refreshing == LoadState.Loading,
-                onRefresh = onPullRefresh
+                onRefresh = onPullRefresh,
             ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                ) {
-                    OutlinedTextField(
-                        value = state.query,
-                        onValueChange = onQueryChange,
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.enter_city)) },
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            imeAction = ImeAction.Search
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                focus.clearFocus()
-                                onSearchCity()
-                            }
-                        ),
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
+                Box(Modifier.fillMaxSize()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = state.query,
+                            onValueChange = onQueryChange,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(stringResource(R.string.enter_city)) },
+                            keyboardOptions = KeyboardOptions.Default.copy(
+                                imeAction = ImeAction.Search
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
                                     focus.clearFocus()
                                     onSearchCity()
-                                },
-                                enabled = state.query.isNotBlank()
-                            ) { Icon(Icons.Default.Search, null) }
-                        }
-                    )
+                                }
+                            ),
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        focus.clearFocus()
+                                        onSearchCity()
+                                    },
+                                    enabled = state.query.isNotBlank()
+                                ) { Icon(Icons.Default.Search, null) }
+                            }
+                        )
 
-                    when {
-                        state.weather == null -> {
+                        if (state.weather == null) {
                             when (state.loading) {
                                 LoadState.Idle -> {
                                     EmptyStub()
@@ -163,19 +190,52 @@ private fun ScreenRoot(
                                     ErrorStub(state.loading.message, onRetryClick)
                                 }
                             }
-                        }
+                        } else {
+                            when {
+                                state.loading is LoadState.Loading -> {
+                                    LoadingSkeleton()
+                                }
 
-                        else -> {
-                            WeatherHeroCard(state.weather)
-                            DetailsGrid(state.weather)
-                            if (state.refreshing is LoadState.Error) {
-                                Toast.makeText(
-                                    context,
-                                    stringResource(R.string.error_refreshing_weather),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                state.loading is LoadState.Error -> {
+                                    ErrorStub(state.loading.message, onRetryClick)
+                                }
+
+                                else -> {
+                                    WeatherHeroCard(state.weather)
+                                    DetailsGrid(state.weather)
+                                }
                             }
                         }
+                    }
+
+                    var showSheet by rememberSaveable { mutableStateOf(false) }
+                    var hiddenForSheet by remember { mutableStateOf<List<String>>(emptyList()) }
+
+                    SavedCitiesRow(
+                        cities = state.savedCities,
+                        onCityClick = { city ->
+                            onQueryChange(city)
+                            onSearchCity()
+                        },
+                        onMoreClick = { hidden ->
+                            hiddenForSheet = hidden
+                            showSheet = true
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp)
+                            .padding(bottom = 16.dp)
+                    )
+
+                    if (showSheet) {
+                        HiddenCitiesSheet(
+                            hidden = hiddenForSheet,
+                            onSelect = { city ->
+                                onQueryChange(city)
+                                onSearchCity()
+                            },
+                            onDismiss = { showSheet = false }
+                        )
                     }
                 }
             }
@@ -215,12 +275,16 @@ private fun WeatherHeroCard(model: WeatherModel) {
                     color = Color.White
                 )
                 Text(
-                    text = stringResource(R.string.feels_like, model.feelsLike.roundToIntOrDash()),
+                    text = stringResource(
+                        R.string.feels_like,
+                        model.feelsLike.roundToIntOrDash()
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.9f)
                 )
                 Text(
-                    text = model.description.replaceFirstChar { it.titlecase() }.ifEmpty { "—" },
+                    text = model.description.replaceFirstChar { it.titlecase() }
+                        .ifEmpty { "—" },
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White
                 )
@@ -247,7 +311,8 @@ private fun DetailsGrid(model: WeatherModel) {
         )
         DetailChip(
             title = stringResource(R.string.wind),
-            value = model.windSpeed?.let { "${formatDoubleOneDigit(model.windSpeed)} м/с" } ?: "—",
+            value = model.windSpeed?.let { "${formatDoubleOneDigit(model.windSpeed)} м/с" }
+                ?: "—",
             modifier = Modifier.weight(1f)
         )
     }
@@ -340,6 +405,125 @@ private fun ErrorStub(message: String, onRetryClick: () -> Unit) {
     }
 }
 
+@Composable
+private fun SavedCitiesRow(
+    cities: List<String>,
+    onCityClick: (String) -> Unit,
+    onMoreClick: (List<String>) -> Unit,
+    modifier: Modifier = Modifier,
+    chipSpacing: Dp = 8.dp,
+) {
+    SubcomposeLayout(modifier) { constraints ->
+        val spacingPx = chipSpacing.roundToPx()
+        val maxW = constraints.maxWidth
+
+        // 1) Черновая подкомпозиция для измерения чипов
+        val chipMeasurables = cities.map { city ->
+            subcompose("measure-chip-$city") {
+                AssistChip(onClick = { onCityClick(city) }, label = { Text(city) })
+            }.first()
+        }
+        // Измеряем «…» чтобы знать резерв
+        val moreProbe = subcompose("measure-more") {
+            AssistChip(
+                onClick = {},
+                label = { Icon(Icons.Default.MoreHoriz, null) },
+            )
+        }.first().measure(constraints)
+        val moreWidth = moreProbe.width
+
+        val measuredChips = chipMeasurables.map { it.measure(constraints) }
+
+        // 2) Считаем сколько чипов влезает (с учётом места под «…», если будут скрытые)
+        var used = 0
+        var visibleCount = 0
+        for (i in measuredChips.indices) {
+            val p = measuredChips[i]
+            val next = if (visibleCount == 0) p.width else used + spacingPx + p.width
+            val isLast = i == measuredChips.lastIndex
+            val needReserveForMore =
+                !isLast // если это не последний, значит будет скрытое → надо место под «…»
+            val fits =
+                if (needReserveForMore) next + spacingPx + moreWidth <= maxW else next <= maxW
+            if (fits) {
+                used = next
+                visibleCount++
+            } else break
+        }
+
+        val hidden = if (visibleCount < cities.size) cities.drop(visibleCount) else emptyList()
+
+        // 3) Подкомпонуем реальные видимые чипы (с onClick) и «…»
+        val visiblePlaceables = (0 until visibleCount).map { idx ->
+            subcompose("chip-$idx") {
+                val city = cities[idx]
+                AssistChip(onClick = { onCityClick(city) }, label = { Text(city) })
+            }.first().measure(constraints)
+        }
+
+        val morePlaceable = if (hidden.isNotEmpty()) {
+            subcompose("more-active") {
+                AssistChip(
+                    onClick = { onMoreClick(hidden) },
+                    label = { Icon(Icons.Default.MoreHoriz, null) },
+                )
+            }.first().measure(constraints)
+        } else null
+
+        val height =
+            (visiblePlaceables.map { it.height } + listOfNotNull(morePlaceable?.height))
+                .maxOrNull() ?: 0
+
+        layout(width = maxW, height = height) {
+            var x = 0
+            visiblePlaceables.forEachIndexed { i, p ->
+                if (i > 0) x += spacingPx
+                p.placeRelative(x, 0)
+                x += p.width
+            }
+            morePlaceable?.let {
+                if (visiblePlaceables.isNotEmpty()) x += spacingPx
+                it.placeRelative(x, 0)
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HiddenCitiesSheet(
+    hidden: List<String>,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            text = "Скрытые города",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            items(hidden) { city ->
+                ListItem(
+                    headlineContent = { Text(city) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onSelect(city)
+                            onDismiss()
+                        }
+                )
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+
 @Preview
 @Composable
 private fun Preview1() {
@@ -387,7 +571,10 @@ private fun Preview2() {
         pressure = 762,
         dewPoint = 12.4,
     )
-    val state = WeatherUiState(weather = model)
+    val state = WeatherUiState(
+        weather = model,
+        savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
+    )
     MiniWeatherTheme {
         ScreenRoot(
             state = state,

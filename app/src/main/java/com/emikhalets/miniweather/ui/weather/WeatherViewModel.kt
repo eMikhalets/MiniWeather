@@ -25,6 +25,10 @@ class WeatherViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
+    init {
+        _uiState.update { it.copy(savedCities = repository.getSavedCities()) }
+    }
+
     fun setQuery(value: String) {
         _uiState.update {
             it.copy(query = value)
@@ -42,11 +46,13 @@ class WeatherViewModel @Inject constructor(
     }
 
     private fun getWeather(loadingMode: Mode) {
+        val query = _uiState.value.query.trim().ifEmpty { return }
+
         loadJob?.cancel()
 
         val (loadingState, refreshingState) = when (loadingMode) {
             Mode.Load -> LoadState.Loading to LoadState.Idle
-            Mode.Refresh -> LoadState.Idle to LoadState.Loading
+            Mode.Refresh -> uiState.value.loading to LoadState.Loading
             Mode.Idle -> LoadState.Idle to LoadState.Idle
         }
         _uiState.update { it.copy(loading = loadingState, refreshing = refreshingState) }
@@ -58,7 +64,8 @@ class WeatherViewModel @Inject constructor(
                         it.copy(
                             weather = data,
                             loading = LoadState.Idle,
-                            refreshing = LoadState.Idle
+                            refreshing = LoadState.Idle,
+                            savedCities = repository.addOrPromoteCity(query)
                         )
                     }
                 }
@@ -71,7 +78,7 @@ class WeatherViewModel @Inject constructor(
                             }
 
                             Mode.Refresh -> {
-                                it.copy(loading = LoadState.Idle, refreshing = state)
+                                it.copy(loading = uiState.value.loading, refreshing = state)
                             }
 
                             Mode.Idle -> {
