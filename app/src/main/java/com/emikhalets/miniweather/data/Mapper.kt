@@ -25,6 +25,9 @@ fun WeatherDto.mapToModel(): WeatherModel {
         iconUrl = firstWeather.safeIconUrl(),
         updatedAt = (dt ?: 0).toLong(),
         pressure = hPaToMmHg(main?.pressure),
+        sunset = sys?.sunset?.toLong() ?: 0,
+        sunrise = sys?.sunrise?.toLong() ?: 0,
+        timeOffset = timezone
     )
 }
 

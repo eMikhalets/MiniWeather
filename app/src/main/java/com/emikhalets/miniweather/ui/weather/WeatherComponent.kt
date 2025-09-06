@@ -58,10 +58,12 @@ fun heroGradient(model: WeatherModel): List<Color> {
 fun DaylightArc(
     sunriseEpochSec: Long,
     sunsetEpochSec: Long,
-    timezoneOffsetSeconds: Int? = null,
-    nowEpochSec: Long = System.currentTimeMillis() / 1000,
     modifier: Modifier = Modifier,
+    timezoneOffset: Int? = null,
+    nowEpochSec: Long = System.currentTimeMillis() / 1000,
 ) {
+    if (sunriseEpochSec == 0L || sunsetEpochSec == 0L) return
+
     val context = LocalContext.current
 
     // валидация (на случай полярного дня/ночи)
@@ -77,13 +79,15 @@ fun DaylightArc(
 
     val arcColorBg = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
     val arcColorFg = MaterialTheme.colorScheme.primary
-    val sunColor = MaterialTheme.colorScheme.primary
+    val sunColor = Color(0xFFFFCC33)
 
-    val strokeWidth = with(LocalDensity.current) { 10.dp.toPx() }
-    val sunRadiusPx = with(LocalDensity.current) { 6.dp.toPx() }
+    val strokeWidth = with(LocalDensity.current) { 6.dp.toPx() }
+    val sunRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Полукруг: сверху, левый край = рассвет, правый = закат
@@ -145,11 +149,12 @@ fun DaylightArc(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = formatTime(sunriseEpochSec, timezoneOffsetSeconds),
+                text = formatTime(sunriseEpochSec, timezoneOffset),
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.Start
             )
@@ -171,7 +176,7 @@ fun DaylightArc(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = formatTime(sunsetEpochSec, timezoneOffsetSeconds),
+                text = formatTime(sunsetEpochSec, timezoneOffset),
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.End
             )

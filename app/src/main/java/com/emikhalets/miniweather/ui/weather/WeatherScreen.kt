@@ -203,6 +203,11 @@ private fun ScreenRoot(
                                 else -> {
                                     WeatherHeroCard(state.weather)
                                     DetailsGrid(state.weather)
+                                    DaylightArc(
+                                        sunriseEpochSec = state.weather.sunrise,
+                                        sunsetEpochSec = state.weather.sunset,
+                                        timezoneOffset = state.weather.timeOffset
+                                    )
                                 }
                             }
                         }
@@ -316,7 +321,7 @@ private fun DetailsGrid(model: WeatherModel) {
         )
         DetailChip(
             title = stringResource(R.string.pressure),
-            value = model.pressure?.let { "$it" } ?: "—",
+            value = model.pressure?.let { stringResource(R.string.pressure_value, it) } ?: "—",
             modifier = Modifier.weight(1f)
         )
     }
@@ -378,6 +383,14 @@ private fun LoadingSkeleton() {
                     .background(shimmer)
             )
         }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(shimmer)
+        )
     }
 }
 
@@ -535,11 +548,13 @@ private fun Preview1() {
         iconUrl = "",
         updatedAt = System.currentTimeMillis(),
         pressure = 762,
+        sunrise = System.currentTimeMillis() - 500000,
+        sunset = System.currentTimeMillis() + 300000,
+        timeOffset = 3,
     )
     val state = WeatherUiState(
         weather = model,
         query = "Лондон",
-        loading = LoadState.Loading
     )
     MiniWeatherTheme {
         ScreenRoot(
@@ -566,6 +581,9 @@ private fun Preview2() {
         iconUrl = "",
         updatedAt = System.currentTimeMillis(),
         pressure = 762,
+        sunrise = 0,
+        sunset = System.currentTimeMillis() + 300000,
+        timeOffset = 3,
     )
     val state = WeatherUiState(
         weather = model,
