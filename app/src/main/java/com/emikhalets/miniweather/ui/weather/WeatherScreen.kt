@@ -61,7 +61,7 @@ fun WeatherScreen(
     ScreenRoot(
         state = state,
         onQueryChange = viewModel::setQuery,
-        onSearchCity = {},
+        onSearchCity = viewModel::getWeather,
         onLocationClick = {},
         onRetryClick = viewModel::getWeather,
         onPullRefresh = viewModel::getWeather,
@@ -74,7 +74,7 @@ private fun ScreenRoot(
     state: WeatherUiState,
     onPullRefresh: () -> Unit,
     onQueryChange: (String) -> Unit,
-    onSearchCity: (String) -> Unit,
+    onSearchCity: () -> Unit,
     onLocationClick: () -> Unit,
     onRetryClick: () -> Unit,
 ) {
@@ -116,7 +116,7 @@ private fun ScreenRoot(
                         placeholder = { Text(stringResource(R.string.enter_city)) },
                         trailingIcon = {
                             IconButton(
-                                onClick = { onSearchCity(state.query.trim()) },
+                                onClick = onSearchCity,
                                 enabled = state.query.isNotBlank()
                             ) { Icon(Icons.Default.Search, null) }
                         }
