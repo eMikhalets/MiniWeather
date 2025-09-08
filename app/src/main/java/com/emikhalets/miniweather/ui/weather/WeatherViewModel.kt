@@ -51,13 +51,23 @@ class WeatherViewModel @Inject constructor(
         getWeather(LoadingMode.Load)
     }
 
+    // Реквест погоды по координатам запускает индикатор загрузки
+    fun searchLocation() {
+        getLocation(LoadingMode.Load)
+    }
+
     // Реквест погоды запускает индикатор pull to refresh
     fun refresh() {
-        getWeather(LoadingMode.Refresh)
+        if (uiState.value.location == null) {
+            getWeather(LoadingMode.Refresh)
+        } else {
+            getLocation(LoadingMode.Refresh)
+        }
     }
 
     private fun getWeather(loadingMode: LoadingMode) {
         val query = _uiState.value.query.trim().ifEmpty { return }
+        _uiState.update { it.copy(location = null) }
 
         loadJob?.cancel()
         prepareLoadingState(loadingMode)
@@ -86,6 +96,7 @@ class WeatherViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             locationSource.getLocation()
                 .onSuccess { (latitude, longitude) ->
+                    _uiState.update { it.copy(location = Pair(latitude, longitude)) }
                     getWeatherByLocation(loadingMode, latitude, longitude)
                 }
                 .onFailure { error ->

@@ -1,5 +1,8 @@
 package com.emikhalets.miniweather.core
 
+import android.content.Context
+import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -65,4 +68,8 @@ fun rememberShimmerBrush(
         start = start,
         end = end
     )
+}
+
+fun Context.toast(@StringRes resId: Int) {
+    Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
 }

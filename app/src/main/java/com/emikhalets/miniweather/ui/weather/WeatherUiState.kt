@@ -11,4 +11,5 @@ data class WeatherUiState(
     val loading: LoadState = LoadState.Idle,
     val refreshing: LoadState = LoadState.Idle,
     val savedCities: List<String> = emptyList(),
+    val location: Pair<Double, Double>? = null,
 )

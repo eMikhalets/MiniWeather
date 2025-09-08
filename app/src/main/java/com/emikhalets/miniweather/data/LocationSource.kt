@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -14,8 +13,8 @@ import timber.log.Timber
 import javax.inject.Inject
 
 class LocationSource @Inject constructor(
+    private val context: Context,
     private val fused: FusedLocationProviderClient,
-    @field:ApplicationContext private val context: Context,
 ) {
 
     /**
