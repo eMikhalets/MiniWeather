@@ -3,8 +3,12 @@ package com.emikhalets.miniweather.ui.weather
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.emikhalets.miniweather.core.LoadState
+import com.emikhalets.miniweather.data.LocationSource
+import com.emikhalets.miniweather.domain.model.ForecastModel
 import com.emikhalets.miniweather.domain.model.Repository
+import com.emikhalets.miniweather.domain.model.WeatherModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,9 +22,10 @@ import javax.inject.Inject
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
     private val repository: Repository,
+    private val locationSource: LocationSource,
 ) : ViewModel() {
 
-    enum class Mode { Idle, Load, Refresh }
+    enum class LoadingMode { Idle, Load, Refresh }
 
     private val _uiState: MutableStateFlow<WeatherUiState> = MutableStateFlow(WeatherUiState())
     val uiState: StateFlow<WeatherUiState> get() = _uiState.asStateFlow()
@@ -31,33 +36,31 @@ class WeatherViewModel @Inject constructor(
         _uiState.update { it.copy(savedCities = repository.getSavedCities()) }
     }
 
+    fun consumeRefreshState() {
+        _uiState.update { it.copy(refreshing = LoadState.Idle) }
+    }
+
     fun setQuery(value: String) {
         _uiState.update {
             it.copy(query = value)
         }
     }
 
-    // запускает индикатор загрузки
+    // Реквест погоды запускает индикатор загрузки
     fun search() {
-        getWeather(Mode.Load)
+        getWeather(LoadingMode.Load)
     }
 
-    // запускает индикатор pull to refresh
+    // Реквест погоды запускает индикатор pull to refresh
     fun refresh() {
-        getWeather(Mode.Refresh)
+        getWeather(LoadingMode.Refresh)
     }
 
-    private fun getWeather(loadingMode: Mode) {
+    private fun getWeather(loadingMode: LoadingMode) {
         val query = _uiState.value.query.trim().ifEmpty { return }
 
         loadJob?.cancel()
-
-        val (loadingState, refreshingState) = when (loadingMode) {
-            Mode.Load -> LoadState.Loading to LoadState.Idle
-            Mode.Refresh -> uiState.value.loading to LoadState.Loading
-            Mode.Idle -> LoadState.Idle to LoadState.Idle
-        }
-        _uiState.update { it.copy(loading = loadingState, refreshing = refreshingState) }
+        prepareLoadingState(loadingMode)
 
         loadJob = viewModelScope.launch {
             supervisorScope {
@@ -66,53 +69,108 @@ class WeatherViewModel @Inject constructor(
 
                 weatherDef.await()
                     .onSuccess { weather ->
-                        forecastDef.await()
-                            .onSuccess { forecast ->
-                                _uiState.update {
-                                    it.copy(
-                                        weather = weather,
-                                        forecast = forecast,
-                                        loading = LoadState.Idle,
-                                        refreshing = LoadState.Idle,
-                                        savedCities = repository.addOrPromoteCity(query)
-                                    )
-                                }
-                            }
-                            .onFailure { error ->
-                                handleError(error, loadingMode)
-                            }
+                        handleForecastDef(weather, forecastDef, loadingMode, query)
                     }
                     .onFailure { error ->
                         forecastDef.cancel()
-                        handleError(error, loadingMode)
+                        handleError(error, "Ошибка", loadingMode)
                     }
             }
         }
     }
 
+    private fun getLocation(loadingMode: LoadingMode) {
+        loadJob?.cancel()
+        prepareLoadingState(loadingMode)
+
+        loadJob = viewModelScope.launch {
+            locationSource.getLocation()
+                .onSuccess { (latitude, longitude) ->
+                    getWeatherByLocation(loadingMode, latitude, longitude)
+                }
+                .onFailure { error ->
+                    handleError(error, "Геолокация недоступна", loadingMode)
+                }
+        }
+    }
+
+    private suspend fun getWeatherByLocation(
+        loadingMode: LoadingMode,
+        latitude: Double,
+        longitude: Double,
+    ) {
+        supervisorScope {
+            val weatherDef = async { repository.getByLocation(latitude, longitude) }
+            val forecastDef = async { repository.getForecastByLocation(latitude, longitude) }
+
+            weatherDef.await()
+                .onSuccess { weather ->
+                    handleForecastDef(weather, forecastDef, loadingMode)
+                }
+                .onFailure { error ->
+                    handleError(error, "Ошибка", loadingMode)
+                }
+        }
+    }
+
+    private suspend fun handleForecastDef(
+        weather: WeatherModel,
+        forecastDef: Deferred<Result<ForecastModel>>,
+        loadingMode: LoadingMode,
+        query: String = "",
+    ) {
+        val cities = if (query.isNotBlank()) {
+            repository.addOrPromoteCity(query)
+        } else {
+            uiState.value.savedCities
+        }
+
+        forecastDef.await()
+            .onSuccess { forecast ->
+                _uiState.update {
+                    it.copy(
+                        weather = weather,
+                        forecast = forecast,
+                        loading = LoadState.Idle,
+                        refreshing = LoadState.Idle,
+                        savedCities = cities
+                    )
+                }
+            }
+            .onFailure { error ->
+                handleError(error, "Ошибка", loadingMode)
+            }
+    }
+
     private fun handleError(
         error: Throwable,
-        loadingMode: Mode,
+        defaultError: String,
+        loadingMode: LoadingMode,
     ) {
-        val state = LoadState.Error(error.message ?: "Ошибка")
+        val state = LoadState.Error(error.message ?: defaultError)
         _uiState.update {
             when (loadingMode) {
-                Mode.Load -> {
+                LoadingMode.Load -> {
                     it.copy(loading = state, refreshing = LoadState.Idle)
                 }
 
-                Mode.Refresh -> {
+                LoadingMode.Refresh -> {
                     it.copy(loading = uiState.value.loading, refreshing = state)
                 }
 
-                Mode.Idle -> {
+                LoadingMode.Idle -> {
                     it.copy(loading = LoadState.Idle, refreshing = LoadState.Idle)
                 }
             }
         }
     }
 
-    fun consumeRefreshState() {
-        _uiState.update { it.copy(refreshing = LoadState.Idle) }
+    private fun prepareLoadingState(loadingMode: LoadingMode) {
+        val (loadingState, refreshState) = when (loadingMode) {
+            LoadingMode.Load -> LoadState.Loading to LoadState.Idle
+            LoadingMode.Refresh -> uiState.value.loading to LoadState.Loading
+            LoadingMode.Idle -> LoadState.Idle to LoadState.Idle
+        }
+        _uiState.update { it.copy(loading = loadingState, refreshing = refreshState) }
     }
 }

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -14,13 +15,14 @@ import javax.inject.Inject
 
 class LocationSource @Inject constructor(
     private val fused: FusedLocationProviderClient,
+    @field:ApplicationContext private val context: Context,
 ) {
 
     /**
      * Возвращает приблизительные координаты (lat, lon) или ошибку.
      * Требует выданного COARSE разрешения.
      */
-    suspend fun getLocation(context: Context): Result<Pair<Double, Double>> {
+    suspend fun getLocation(): Result<Pair<Double, Double>> {
         val hasCoarse = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
