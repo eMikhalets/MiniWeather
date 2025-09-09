@@ -1,6 +1,5 @@
 package com.emikhalets.miniweather.data.remote
 
-
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

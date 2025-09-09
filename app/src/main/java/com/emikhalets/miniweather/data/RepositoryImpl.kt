@@ -3,6 +3,7 @@ package com.emikhalets.miniweather.data
 import com.emikhalets.miniweather.data.local.SavedCitiesStore
 import com.emikhalets.miniweather.data.remote.WeatherApi
 import com.emikhalets.miniweather.domain.model.ForecastModel
+import com.emikhalets.miniweather.domain.model.PollutionModel
 import com.emikhalets.miniweather.domain.model.Repository
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +59,17 @@ class RepositoryImpl @Inject constructor(
         longitude: Double,
     ): Result<ForecastModel> {
         return invoke { weatherApi.getForecastByLocation(latitude, longitude).mapToModel() }
+    }
+
+    override suspend fun getPollutionByCity(city: String): Result<PollutionModel> {
+        return invoke { weatherApi.getPollutionByCity(city).mapToModel() }
+    }
+
+    override suspend fun getPollutionByLocation(
+        latitude: Double,
+        longitude: Double,
+    ): Result<PollutionModel> {
+        return invoke { weatherApi.getPollutionByLocation(latitude, longitude).mapToModel() }
     }
 
     override fun getSavedCities(): List<String> {
