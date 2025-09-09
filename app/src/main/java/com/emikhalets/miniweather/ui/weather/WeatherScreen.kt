@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -125,17 +126,21 @@ private fun ScreenRoot(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
             ) {
                 CitiesSearchRow(
                     query = state.query,
                     onQueryChange = onQueryChange,
                     onSearchCity = onSearchCity,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
                 when (state.loading) {
                     is LoadState.Error -> {
-                        ErrorStub(state.loading.message, onRetryClick)
+                        ErrorStub(
+                            message = state.loading.message,
+                            onRetryClick = onRetryClick,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                     }
 
                     LoadState.Loading -> {
@@ -144,12 +149,21 @@ private fun ScreenRoot(
 
                     LoadState.Idle -> {
                         if (state.weather == null) {
-                            EmptyStub()
+                            EmptyStub(Modifier.padding(horizontal = 16.dp))
                         } else {
-                            WeatherHeroCard(state.weather)
-                            DetailsGrid(state.weather)
+                            WeatherHeroCard(
+                                model = state.weather,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            DetailsGrid(
+                                model = state.weather,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
                             state.forecast?.let {
-                                HourlyForecastRow(it)
+                                HourlyForecastRow(
+                                    forecast = it,
+                                    modifier = Modifier
+                                )
                             }
                             DaylightArc(
                                 sunriseEpochSec = state.weather.sunrise,
@@ -235,6 +249,7 @@ private fun CitiesSearchRow(
     query: String,
     onQueryChange: (String) -> Unit,
     onSearchCity: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val focus = LocalFocusManager.current
 
@@ -261,18 +276,18 @@ private fun CitiesSearchRow(
                 enabled = query.isNotBlank()
             ) { Icon(Icons.Default.Search, null) }
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth()
     )
 }
 
 @Composable
-private fun WeatherHeroCard(model: WeatherModel) {
+private fun WeatherHeroCard(model: WeatherModel, modifier: Modifier = Modifier) {
     val gradient = heroGradient(model)
     val updated = remember(model.updatedAt) {
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(model.updatedAt * 1000))
     }
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .background(Brush.verticalGradient(gradient), RoundedCornerShape(24.dp))
             .padding(20.dp)
@@ -323,8 +338,8 @@ private fun WeatherHeroCard(model: WeatherModel) {
 }
 
 @Composable
-private fun DetailsGrid(model: WeatherModel) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+private fun DetailsGrid(model: WeatherModel, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         DetailChip(
             title = stringResource(R.string.humidity),
             value = model.humidity?.let { "${it}%" } ?: "—",
@@ -364,17 +379,23 @@ private fun DetailChip(title: String, value: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun LoadingSkeleton() {
+private fun LoadingSkeleton(modifier: Modifier = Modifier) {
     val shimmer = rememberShimmerBrush()
 
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .height(180.dp)
                 .background(shimmer, RoundedCornerShape(24.dp))
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
             repeat(3) {
                 Box(
                     Modifier
@@ -384,41 +405,59 @@ private fun LoadingSkeleton() {
                 )
             }
         }
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .background(shimmer, RoundedCornerShape(24.dp))
-        )
-        LazyRow(
-            userScrollEnabled = false,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            repeat(6) {
+        Column {
+            Text(
+                text = stringResource(R.string.next_24h),
+                color = Color.Transparent,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .background(shimmer, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 4.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            LazyRow(
+                userScrollEnabled = false,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 item {
-                    Box(
-                        Modifier
-                            .size(72.dp, 120.dp)
-                            .background(shimmer, RoundedCornerShape(16.dp))
-                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                repeat(6) {
+                    item {
+                        Box(
+                            Modifier
+                                .size(72.dp, 120.dp)
+                                .background(shimmer, RoundedCornerShape(16.dp))
+                        )
+                    }
                 }
             }
         }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(200.dp)
+                .background(shimmer, RoundedCornerShape(24.dp))
+        )
     }
 }
 
 @Composable
-private fun EmptyStub() {
+private fun EmptyStub(modifier: Modifier = Modifier) {
     Text(
         text = stringResource(R.string.enter_city_to_show_weather),
-        style = MaterialTheme.typography.bodyMedium
+        style = MaterialTheme.typography.bodyLarge,
+        textAlign = TextAlign.Center,
+        modifier = modifier.fillMaxWidth()
     )
 }
 
 @Composable
-private fun ErrorStub(message: String, onRetryClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+private fun ErrorStub(message: String, onRetryClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = stringResource(R.string.error_value, message),
             color = MaterialTheme.colorScheme.error
@@ -431,7 +470,7 @@ private fun ErrorStub(message: String, onRetryClick: () -> Unit) {
 }
 
 @Composable
-private fun HourlyForecastRow(forecast: ForecastModel) {
+private fun HourlyForecastRow(forecast: ForecastModel, modifier: Modifier = Modifier) {
     val hours = remember(forecast) { forecast.hours.take(8) } // 8 точек * 3 часа = 24ч
     if (hours.isEmpty()) return
 
@@ -439,9 +478,13 @@ private fun HourlyForecastRow(forecast: ForecastModel) {
         Text(
             text = stringResource(R.string.next_24h),
             style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
         Spacer(Modifier.height(6.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
+            item {
+                Spacer(Modifier.width(8.dp))
+            }
             items(hours) { hour ->
                 HourCard(hour = hour, tzOffsetSec = forecast.timeOffset)
             }
