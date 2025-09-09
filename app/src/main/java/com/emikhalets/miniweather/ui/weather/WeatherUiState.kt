@@ -10,8 +10,9 @@ data class WeatherUiState(
     val weather: WeatherModel? = null,
     val forecast: ForecastModel? = null,
     val loading: LoadState = LoadState.Idle,
-    val refreshing: LoadState = LoadState.Idle,
+    val refresh: LoadState = LoadState.Idle,
     val savedCities: List<String> = emptyList(),
     val location: Pair<Double, Double>? = null,
+    val suggestions: List<String> = emptyList(), // search cities list
     val airPollution: PollutionModel? = null,
 )

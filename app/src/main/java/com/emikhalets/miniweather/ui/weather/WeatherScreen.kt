@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,10 +25,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,10 +43,15 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -89,7 +100,7 @@ fun WeatherScreen(
         servicesDisabledToast = stringResource(R.string.location_services_disabled)
     )
 
-    val refreshErrorMessage = (state.refreshing as? LoadState.Error)?.message
+    val refreshErrorMessage = (state.refresh as? LoadState.Error)?.message
     LaunchedEffect(refreshErrorMessage) {
         refreshErrorMessage?.let {
             context.toast(R.string.error_refreshing_weather)
@@ -104,6 +115,8 @@ fun WeatherScreen(
         onLocationClick = requestLocationAccess,
         onRetryClick = viewModel::search,
         onPullRefresh = viewModel::refresh,
+        onPickSuggestion = viewModel::pickSuggestion,
+        onDismissSuggestions = viewModel::clearSuggestions,
     )
 }
 
@@ -115,6 +128,8 @@ private fun ScreenRoot(
     onSearchCity: () -> Unit = {},
     onLocationClick: () -> Unit = {},
     onRetryClick: () -> Unit = {},
+    onPickSuggestion: (String) -> Unit = {},
+    onDismissSuggestions: () -> Unit = {},
 ) {
     RootScaffoldBox(onLocationClick) {
         PullRefreshBox(
@@ -132,6 +147,8 @@ private fun ScreenRoot(
                     query = state.query,
                     onQueryChange = onQueryChange,
                     onSearchCity = onSearchCity,
+                    onPickSuggestion = onPickSuggestion,
+                    onDismissSuggestions = onDismissSuggestions,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
@@ -252,40 +269,81 @@ private fun PullRefreshBox(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CitiesSearchRow(
     query: String,
     onQueryChange: (String) -> Unit,
     onSearchCity: () -> Unit,
+    onPickSuggestion: (String) -> Unit,
+    onDismissSuggestions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focus = LocalFocusManager.current
 
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        singleLine = true,
-        placeholder = { Text(stringResource(R.string.enter_city)) },
-        keyboardOptions = KeyboardOptions.Default.copy(
-            imeAction = ImeAction.Search
-        ),
-        keyboardActions = KeyboardActions(
-            onSearch = {
-                focus.clearFocus()
-                onSearchCity()
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var hasFocus by remember { mutableStateOf(false) }
+
+    fun invokeSearch() {
+        focus.clearFocus()
+        onDismissSuggestions()
+        onSearchCity()
+    }
+
+    LaunchedEffect(suggestions, hasFocus, query) {
+        expanded = hasFocus && query.isNotBlank() && suggestions.isNotEmpty()
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { wantExpand ->
+            expanded = wantExpand && suggestions.isNotEmpty()
+        }
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.enter_city)) },
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Search
+            ),
+            keyboardActions = KeyboardActions(
+                onSearch = { invokeSearch() }
+            ),
+            trailingIcon = {
+                IconButton(
+                    onClick = { invokeSearch() },
+                    enabled = query.isNotBlank()
+                ) { Icon(Icons.Default.Search, null) }
+            },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                .fillMaxWidth()
+                .onFocusChanged { hasFocus = it.hasFocus },
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                onDismissSuggestions()
+            },
+            modifier = Modifier
+                .exposedDropdownSize()
+                .heightIn(max = 320.dp)
+        ) {
+            suggestions.forEach { city ->
+                DropdownMenuItem(
+                    text = { Text(city) },
+                    onClick = {
+                        expanded = false
+                        focus.clearFocus()
+                        onPickSuggestion(city)
+                    }
+                )
             }
-        ),
-        trailingIcon = {
-            IconButton(
-                onClick = {
-                    focus.clearFocus()
-                    onSearchCity()
-                },
-                enabled = query.isNotBlank()
-            ) { Icon(Icons.Default.Search, null) }
-        },
-        modifier = modifier.fillMaxWidth()
-    )
+        }
+    }
 }
 
 @Composable
@@ -470,7 +528,7 @@ private fun ErrorStub(message: String, onRetryClick: () -> Unit, modifier: Modif
             text = stringResource(R.string.error_value, message),
             color = MaterialTheme.colorScheme.error
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(32.dp))
         Button(onClick = onRetryClick) {
             Text(stringResource(R.string.repeat))
         }
