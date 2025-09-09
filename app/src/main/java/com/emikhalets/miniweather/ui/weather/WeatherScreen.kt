@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,7 +52,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -118,7 +118,6 @@ fun WeatherScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScreenRoot(
     state: WeatherUiState,
@@ -128,10 +127,94 @@ private fun ScreenRoot(
     onLocationClick: () -> Unit = {},
     onRetryClick: () -> Unit = {},
 ) {
-    val focus = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
-    val refreshState = rememberPullToRefreshState()
+    RootScaffoldBox(onLocationClick) {
+        PullRefreshBox(
+            query = state.query,
+            refreshing = state.refreshing,
+            onPullRefresh = onPullRefresh
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+            ) {
+                CitiesSearchRow(
+                    query = state.query,
+                    onQueryChange = onQueryChange,
+                    onSearchCity = onSearchCity,
+                )
 
+                when (state.loading) {
+                    is LoadState.Error -> {
+                        ErrorStub(state.loading.message, onRetryClick)
+                    }
+
+                    LoadState.Loading -> {
+                        LoadingSkeleton()
+                    }
+
+                    LoadState.Idle -> {
+                        if (state.weather == null) {
+                            EmptyStub()
+                        } else {
+                            WeatherHeroCard(state.weather)
+                            DetailsGrid(state.weather)
+                            state.forecast?.let {
+                                HourlyForecastRow(it)
+                            }
+                            DaylightArc(
+                                sunriseEpochSec = state.weather.sunrise,
+                                sunsetEpochSec = state.weather.sunset,
+                                timezoneOffset = state.weather.timeOffset
+                            )
+                            Spacer(Modifier.height(80.dp))
+                        }
+                    }
+                }
+            }
+
+            var showSheet by rememberSaveable { mutableStateOf(false) }
+            var hiddenForSheet by remember { mutableStateOf<List<String>>(emptyList()) }
+
+            if (state.savedCities.isNotEmpty()) {
+                SavedCitiesRow(
+                    cities = state.savedCities,
+                    onCityClick = { city ->
+                        onQueryChange(city)
+                        onSearchCity()
+                    },
+                    onMoreClick = { hidden ->
+                        hiddenForSheet = hidden
+                        showSheet = true
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                )
+            }
+
+            if (showSheet) {
+                HiddenCitiesSheet(
+                    hidden = hiddenForSheet,
+                    onSelect = { city ->
+                        onQueryChange(city)
+                        onSearchCity()
+                    },
+                    onDismiss = { showSheet = false }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RootScaffoldBox(
+    onLocationClick: () -> Unit,
+    content: @Composable BoxScope.() -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -145,123 +228,76 @@ private fun ScreenRoot(
                     }
                 }
             )
+        },
+        content = { padding ->
+            Box(
+                content = { content() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            )
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            PullToRefreshBox(
-                state = refreshState,
-                isRefreshing = state.refreshing == LoadState.Loading,
-                onRefresh = {
-                    if (state.query.isBlank()) {
-                        scope.launch {
-                            refreshState.animateToHidden()
-                        }
-                    } else {
-                        onPullRefresh()
-                    }
-                }
-            ) {
-                Box(Modifier.fillMaxSize()) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
-                    ) {
-                        OutlinedTextField(
-                            value = state.query,
-                            onValueChange = onQueryChange,
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text(stringResource(R.string.enter_city)) },
-                            keyboardOptions = KeyboardOptions.Default.copy(
-                                imeAction = ImeAction.Search
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    focus.clearFocus()
-                                    onSearchCity()
-                                }
-                            ),
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        focus.clearFocus()
-                                        onSearchCity()
-                                    },
-                                    enabled = state.query.isNotBlank()
-                                ) { Icon(Icons.Default.Search, null) }
-                            }
-                        )
+    )
+}
 
-                        when (state.loading) {
-                            is LoadState.Error -> {
-                                ErrorStub(state.loading.message, onRetryClick)
-                            }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PullRefreshBox(
+    query: String,
+    refreshing: LoadState,
+    onPullRefresh: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val refreshState = rememberPullToRefreshState()
 
-                            LoadState.Loading -> {
-                                LoadingSkeleton()
-                            }
-
-                            LoadState.Idle -> {
-                                if (state.weather == null) {
-                                    EmptyStub()
-                                } else {
-                                    WeatherHeroCard(state.weather)
-                                    DetailsGrid(state.weather)
-                                    DaylightArc(
-                                        sunriseEpochSec = state.weather.sunrise,
-                                        sunsetEpochSec = state.weather.sunset,
-                                        timezoneOffset = state.weather.timeOffset
-                                    )
-                                }
-                            }
-                        }
-
-                        state.forecast?.let {
-                            HourlyForecastRow(it)
-                        }
-                    }
-
-                    var showSheet by rememberSaveable { mutableStateOf(false) }
-                    var hiddenForSheet by remember { mutableStateOf<List<String>>(emptyList()) }
-
-                    if (state.savedCities.isNotEmpty()) {
-                        SavedCitiesRow(
-                            cities = state.savedCities,
-                            onCityClick = { city ->
-                                onQueryChange(city)
-                                onSearchCity()
-                            },
-                            onMoreClick = { hidden ->
-                                hiddenForSheet = hidden
-                                showSheet = true
-                            },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(16.dp)
-                        )
-                    }
-
-                    if (showSheet) {
-                        HiddenCitiesSheet(
-                            hidden = hiddenForSheet,
-                            onSelect = { city ->
-                                onQueryChange(city)
-                                onSearchCity()
-                            },
-                            onDismiss = { showSheet = false }
-                        )
-                    }
-                }
+    PullToRefreshBox(
+        state = refreshState,
+        content = { content() },
+        isRefreshing = refreshing == LoadState.Loading,
+        onRefresh = {
+            if (query.isBlank()) {
+                scope.launch { refreshState.animateToHidden() }
+            } else {
+                onPullRefresh()
             }
         }
-    }
+    )
+}
+
+@Composable
+private fun CitiesSearchRow(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearchCity: () -> Unit,
+) {
+    val focus = LocalFocusManager.current
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        placeholder = { Text(stringResource(R.string.enter_city)) },
+        keyboardOptions = KeyboardOptions.Default.copy(
+            imeAction = ImeAction.Search
+        ),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                focus.clearFocus()
+                onSearchCity()
+            }
+        ),
+        trailingIcon = {
+            IconButton(
+                onClick = {
+                    focus.clearFocus()
+                    onSearchCity()
+                },
+                enabled = query.isNotBlank()
+            ) { Icon(Icons.Default.Search, null) }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -273,8 +309,7 @@ private fun WeatherHeroCard(model: WeatherModel) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Brush.verticalGradient(gradient))
+            .background(Brush.verticalGradient(gradient), RoundedCornerShape(24.dp))
             .padding(20.dp)
     ) {
         Text(
@@ -347,8 +382,7 @@ private fun DetailsGrid(model: WeatherModel) {
 private fun DetailChip(title: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
             .padding(14.dp)
     ) {
         Text(
@@ -373,64 +407,38 @@ private fun LoadingSkeleton() {
             Modifier
                 .fillMaxWidth()
                 .height(180.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(shimmer)
+                .background(shimmer, RoundedCornerShape(24.dp))
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(72.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(72.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(72.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
+            repeat(3) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(72.dp)
+                        .background(shimmer, RoundedCornerShape(16.dp))
+                )
+            }
         }
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(shimmer)
+                .background(shimmer, RoundedCornerShape(24.dp))
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Box(
-                Modifier
-                    .size(72.dp, 120.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
-            Box(
-                Modifier
-                    .size(72.dp, 120.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
-            Box(
-                Modifier
-                    .size(72.dp, 120.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
-            Box(
-                Modifier
-                    .size(72.dp, 120.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmer)
-            )
+        LazyRow(
+            userScrollEnabled = false,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            repeat(6) {
+                item {
+                    Box(
+                        Modifier
+                            .size(72.dp, 120.dp)
+                            .background(shimmer, RoundedCornerShape(16.dp))
+                    )
+                }
+            }
         }
     }
 }
@@ -598,10 +606,7 @@ private fun HourlyForecastRow(forecast: ForecastModel) {
             style = MaterialTheme.typography.titleMedium,
         )
         Spacer(Modifier.height(6.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(bottom = 80.dp)
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(hours) { hour ->
                 HourCard(hour = hour, tzOffsetSec = forecast.timeOffset)
             }
@@ -611,12 +616,14 @@ private fun HourlyForecastRow(forecast: ForecastModel) {
 
 @Composable
 private fun HourCard(hour: ForecastModel.Hour, tzOffsetSec: Int) {
-    val time = remember(hour.timeEpoch, tzOffsetSec) { formatTime(hour.timeEpoch, tzOffsetSec) }
+    val time = remember(hour.timeEpoch, tzOffsetSec) {
+        formatTime(hour.timeEpoch, tzOffsetSec)
+    }
+
     Column(
         Modifier
             .width(72.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -650,7 +657,7 @@ private fun HourCard(hour: ForecastModel.Hour, tzOffsetSec: Int) {
 //  Preview Data
 // ==============
 
-private fun previewWeatherGenerator(): WeatherModel {
+private fun previewWeatherGenerator(onlyMain: Boolean = false): WeatherModel {
     val now = System.currentTimeMillis()
     return WeatherModel(
         city = "Москва",
@@ -662,8 +669,8 @@ private fun previewWeatherGenerator(): WeatherModel {
         iconUrl = "",
         updatedAt = Random.nextLong(now - 1000 * 60 * 60 * 24, now),
         pressure = Random.nextInt(740, 770),
-        sunrise = now - 500000,
-        sunset = now + 300000,
+        sunrise = if (!onlyMain) now - 500000 else 0,
+        sunset = if (!onlyMain) now + 300000 else 0,
         timeOffset = 3,
     )
 }
@@ -713,6 +720,20 @@ private fun PreviewError() {
 private fun PreviewData() {
     val state = WeatherUiState(
         weather = previewWeatherGenerator(),
+        forecast = previewForecastGenerator(),
+        query = "Лондон",
+        savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
+    )
+    MiniWeatherTheme {
+        ScreenRoot(state = state)
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewDataOnlyMain() {
+    val state = WeatherUiState(
+        weather = previewWeatherGenerator(onlyMain = true),
         forecast = previewForecastGenerator(),
         query = "Лондон",
         savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
