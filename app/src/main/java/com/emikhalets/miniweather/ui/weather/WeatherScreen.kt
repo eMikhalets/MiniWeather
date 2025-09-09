@@ -1,15 +1,5 @@
 package com.emikhalets.miniweather.ui.weather
 
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,7 +38,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -75,8 +63,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -89,11 +75,6 @@ import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
 import com.emikhalets.miniweather.core.toast
 import com.emikhalets.miniweather.domain.model.ForecastModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
-import com.google.android.gms.common.api.ResolvableApiException
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.LocationSettingsRequest
-import com.google.android.gms.location.Priority
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.text.SimpleDateFormat
@@ -106,64 +87,17 @@ fun WeatherScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val activity = LocalActivity.current
 
-    var showRationale by remember { mutableStateOf(false) }
-    var showGoToSettings by remember { mutableStateOf(false) }
-
-    val resolutionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            viewModel.searchLocation()
-        } else {
-            context.toast(R.string.location_services_disabled)
-        }
-    }
-
-    fun checkLocationSettingsAndProceed(activity: Activity) {
-        val client = LocationServices.getSettingsClient(activity)
-        val request = LocationRequest.Builder(
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-            10_000L
-        ).build()
-        val settingsRequest = LocationSettingsRequest.Builder()
-            .addLocationRequest(request)
-            .build()
-
-        client.checkLocationSettings(settingsRequest)
-            .addOnSuccessListener {
-                viewModel.searchLocation()
-            }
-            .addOnFailureListener { ex ->
-                val rae = ex as? ResolvableApiException
-                if (rae != null) {
-                    resolutionLauncher.launch(
-                        IntentSenderRequest.Builder(rae.resolution).build()
-                    )
-                } else {
-                    context.toast(R.string.location_services_disabled)
-                }
-            }
-    }
-
-    val locationPermission = Manifest.permission.ACCESS_COARSE_LOCATION
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            activity?.let { checkLocationSettingsAndProceed(it) }
-        } else {
-            val needRationale = activity?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(it, locationPermission)
-            } ?: false
-            if (needRationale) {
-                showRationale = true
-            } else {
-                showGoToSettings = true
-            }
-        }
-    }
+    val requestLocationAccess = rememberLocationAccess(
+        onReady = { viewModel.searchLocation() },
+        rationaleText = stringResource(R.string.permission_location_rationale),
+        permissionDeniedTitle = stringResource(R.string.permission_needed),
+        permissionDeniedHint = stringResource(R.string.permission_denied_settings_hint),
+        allowText = stringResource(R.string.allow),
+        cancelText = stringResource(R.string.cancel),
+        openSettingsText = stringResource(R.string.open_settings),
+        servicesDisabledToast = stringResource(R.string.location_services_disabled)
+    )
 
     val refreshErrorMessage = (state.refreshing as? LoadState.Error)?.message
     LaunchedEffect(refreshErrorMessage) {
@@ -177,64 +111,10 @@ fun WeatherScreen(
         state = state,
         onQueryChange = viewModel::setQuery,
         onSearchCity = viewModel::search,
-        onLocationClick = {
-            val granted = ContextCompat.checkSelfPermission(context, locationPermission) ==
-                    PackageManager.PERMISSION_GRANTED
-            when {
-                granted -> activity?.let { checkLocationSettingsAndProceed(it) }
-                else -> {
-                    val needRationale = activity?.let {
-                        ActivityCompat.shouldShowRequestPermissionRationale(it, locationPermission)
-                    } ?: false
-                    if (needRationale) showRationale = true
-                    else permissionLauncher.launch(locationPermission)
-                }
-            }
-        },
+        onLocationClick = requestLocationAccess,
         onRetryClick = viewModel::search,
         onPullRefresh = viewModel::refresh,
     )
-
-    if (showRationale) {
-        AlertDialog(
-            onDismissRequest = { showRationale = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    showRationale = false
-                    permissionLauncher.launch(locationPermission)
-                }) { Text(stringResource(R.string.allow)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showRationale = false
-                }) { Text(stringResource(R.string.cancel)) }
-            },
-            title = { Text(stringResource(R.string.permission_needed)) },
-            text = { Text(stringResource(R.string.permission_location_rationale)) }
-        )
-    }
-    if (showGoToSettings) {
-        AlertDialog(
-            onDismissRequest = { showGoToSettings = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    showGoToSettings = false
-                    val intent = Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.packageName, null)
-                    )
-                    context.startActivity(intent)
-                }) { Text(stringResource(R.string.open_settings)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showGoToSettings = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            title = { Text(stringResource(R.string.permission_denied)) },
-            text = { Text(stringResource(R.string.permission_denied_settings_hint)) }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -342,32 +222,6 @@ private fun ScreenRoot(
                             }
                         }
 
-//                        if (state.weather == null) {
-//                            when (state.loading) {
-//                                LoadState.Idle -> {
-//                                }
-//
-//                                LoadState.Loading -> {
-//                                }
-//
-//                                is LoadState.Error -> {
-//                                }
-//                            }
-//                        } else {
-//                            when (state.loading) {
-//                                is LoadState.Loading -> {
-//                                    LoadingSkeleton()
-//                                }
-//
-//                                is LoadState.Error -> {
-//                                    ErrorStub(state.loading.message, onRetryClick)
-//                                }
-//
-//                                else -> {
-//                                }
-//                            }
-//                        }
-
                         state.forecast?.let {
                             HourlyForecastRow(it)
                         }
@@ -376,20 +230,22 @@ private fun ScreenRoot(
                     var showSheet by rememberSaveable { mutableStateOf(false) }
                     var hiddenForSheet by remember { mutableStateOf<List<String>>(emptyList()) }
 
-                    SavedCitiesRow(
-                        cities = state.savedCities,
-                        onCityClick = { city ->
-                            onQueryChange(city)
-                            onSearchCity()
-                        },
-                        onMoreClick = { hidden ->
-                            hiddenForSheet = hidden
-                            showSheet = true
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(16.dp)
-                    )
+                    if (state.savedCities.isNotEmpty()) {
+                        SavedCitiesRow(
+                            cities = state.savedCities,
+                            onCityClick = { city ->
+                                onQueryChange(city)
+                                onSearchCity()
+                            },
+                            onMoreClick = { hidden ->
+                                hiddenForSheet = hidden
+                                showSheet = true
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(16.dp)
+                        )
+                    }
 
                     if (showSheet) {
                         HiddenCitiesSheet(
