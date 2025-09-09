@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.jakewharton.retrofit2.converter)
     implementation(libs.androidx.hilt.compose)
     implementation(libs.jakewharton.timber)
+    implementation(libs.google.location)
+    implementation(libs.jetbrains.coroutines.play.services)
 
     // Testing
     testImplementation(libs.junit)

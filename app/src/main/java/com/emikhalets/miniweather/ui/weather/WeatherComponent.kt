@@ -1,6 +1,18 @@
 package com.emikhalets.miniweather.ui.weather
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -11,10 +23,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -27,8 +44,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.emikhalets.miniweather.R
+import com.emikhalets.miniweather.core.toast
 import com.emikhalets.miniweather.domain.model.WeatherModel
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.Priority
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -193,6 +218,143 @@ fun formatTime(epochSec: Long, tzOffsetSec: Int?): String {
     } ?: TimeZone.getDefault()
     fmt.timeZone = tz
     return fmt.format(Date(epochSec * 1000))
+}
+
+/**
+ * Возвращает лямбду, которую можно повесить на кнопку "геолокация".
+ * Внутри хук сам показывает rational/настройки/диалог включения локации
+ * и вызывает onReady() только когда всё ок.
+ */
+@Composable
+fun rememberLocationAccess(
+    onReady: () -> Unit,
+    rationaleText: String,
+    permissionDeniedTitle: String,
+    permissionDeniedHint: String,
+    allowText: String,
+    cancelText: String,
+    openSettingsText: String,
+    servicesDisabledToast: String,
+): () -> Unit {
+    val context = LocalContext.current
+    val activity = LocalActivity.current
+
+    var showRationale by remember { mutableStateOf(false) }
+    var showGoToSettings by remember { mutableStateOf(false) }
+
+    val resolutionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            onReady()
+        } else {
+            context.toast(servicesDisabledToast)
+        }
+    }
+
+    val permission = Manifest.permission.ACCESS_COARSE_LOCATION
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            resolveLocationSettings(activity, onReady, servicesDisabledToast, resolutionLauncher)
+        } else {
+            val needRationale = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, permission)
+            } ?: false
+            if (needRationale) {
+                showRationale = true
+            } else {
+                showGoToSettings = true
+            }
+        }
+    }
+
+    val onLocationClick: () -> Unit = {
+        val granted = ContextCompat.checkSelfPermission(context, permission) ==
+                PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            resolveLocationSettings(activity, onReady, servicesDisabledToast, resolutionLauncher)
+        } else {
+            val needRationale = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, permission)
+            } ?: false
+            if (needRationale) {
+                showRationale = true
+            } else {
+                permissionLauncher.launch(permission)
+            }
+        }
+    }
+
+    if (showRationale) {
+        AlertDialog(
+            onDismissRequest = { showRationale = false },
+            title = { Text(text = permissionDeniedTitle) },
+            text = { Text(text = rationaleText) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRationale = false
+                    permissionLauncher.launch(permission)
+                }) { Text(allowText) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRationale = false }) { Text(cancelText) }
+            }
+        )
+    }
+    if (showGoToSettings) {
+        AlertDialog(
+            onDismissRequest = { showGoToSettings = false },
+            title = { Text(text = permissionDeniedTitle) },
+            text = { Text(text = permissionDeniedHint) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showGoToSettings = false
+                    val intent = Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null)
+                    )
+                    context.startActivity(intent)
+                }) { Text(openSettingsText) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGoToSettings = false }) { Text(cancelText) }
+            }
+        )
+    }
+
+    return onLocationClick
+}
+
+private fun resolveLocationSettings(
+    activity: Activity?,
+    onReady: () -> Unit,
+    servicesDisabledToast: String,
+    resolutionLauncher: ManagedActivityResultLauncher<IntentSenderRequest, ActivityResult>?,
+) {
+    activity ?: return
+
+    val client = LocationServices.getSettingsClient(activity)
+    val request = LocationRequest.Builder(
+        Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L
+    ).build()
+    val settingsRequest = LocationSettingsRequest.Builder()
+        .addLocationRequest(request)
+        .build()
+
+    client.checkLocationSettings(settingsRequest)
+        .addOnSuccessListener { onReady() }
+        .addOnFailureListener { ex ->
+            val rae = ex as? ResolvableApiException
+            if (rae != null) {
+                resolutionLauncher
+                    ?.launch(IntentSenderRequest.Builder(rae.resolution).build())
+                    ?: rae.startResolutionForResult(activity, 1001)
+            } else {
+                activity.toast(servicesDisabledToast)
+            }
+        }
 }
 
 private fun formatDuration(context: Context, seconds: Long): String {

@@ -1,6 +1,5 @@
 package com.emikhalets.miniweather.ui.weather
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +72,7 @@ import com.emikhalets.miniweather.core.formatDoubleOneDigit
 import com.emikhalets.miniweather.core.rememberShimmerBrush
 import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
+import com.emikhalets.miniweather.core.toast
 import com.emikhalets.miniweather.domain.model.ForecastModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import kotlinx.coroutines.launch
@@ -88,14 +88,21 @@ fun WeatherScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val requestLocationAccess = rememberLocationAccess(
+        onReady = { viewModel.searchLocation() },
+        rationaleText = stringResource(R.string.permission_location_rationale),
+        permissionDeniedTitle = stringResource(R.string.permission_needed),
+        permissionDeniedHint = stringResource(R.string.permission_denied_settings_hint),
+        allowText = stringResource(R.string.allow),
+        cancelText = stringResource(R.string.cancel),
+        openSettingsText = stringResource(R.string.open_settings),
+        servicesDisabledToast = stringResource(R.string.location_services_disabled)
+    )
+
     val refreshErrorMessage = (state.refreshing as? LoadState.Error)?.message
     LaunchedEffect(refreshErrorMessage) {
         refreshErrorMessage?.let {
-            Toast.makeText(
-                context,
-                context.getString(R.string.error_refreshing_weather),
-                Toast.LENGTH_SHORT
-            ).show()
+            context.toast(R.string.error_refreshing_weather)
             viewModel.consumeRefreshState()
         }
     }
@@ -104,9 +111,7 @@ fun WeatherScreen(
         state = state,
         onQueryChange = viewModel::setQuery,
         onSearchCity = viewModel::search,
-        onLocationClick = {
-            // TODO: set location feature
-        },
+        onLocationClick = requestLocationAccess,
         onRetryClick = viewModel::search,
         onPullRefresh = viewModel::refresh,
     )
@@ -131,7 +136,7 @@ private fun ScreenRoot(
             TopAppBar(
                 title = { Text(stringResource(R.string.weather)) },
                 actions = {
-                    IconButton(onClick = onLocationClick, enabled = false) {
+                    IconButton(onClick = onLocationClick) {
                         Icon(
                             imageVector = Icons.Default.MyLocation,
                             contentDescription = stringResource(R.string.my_location)
@@ -217,32 +222,6 @@ private fun ScreenRoot(
                             }
                         }
 
-//                        if (state.weather == null) {
-//                            when (state.loading) {
-//                                LoadState.Idle -> {
-//                                }
-//
-//                                LoadState.Loading -> {
-//                                }
-//
-//                                is LoadState.Error -> {
-//                                }
-//                            }
-//                        } else {
-//                            when (state.loading) {
-//                                is LoadState.Loading -> {
-//                                    LoadingSkeleton()
-//                                }
-//
-//                                is LoadState.Error -> {
-//                                    ErrorStub(state.loading.message, onRetryClick)
-//                                }
-//
-//                                else -> {
-//                                }
-//                            }
-//                        }
-
                         state.forecast?.let {
                             HourlyForecastRow(it)
                         }
@@ -251,20 +230,22 @@ private fun ScreenRoot(
                     var showSheet by rememberSaveable { mutableStateOf(false) }
                     var hiddenForSheet by remember { mutableStateOf<List<String>>(emptyList()) }
 
-                    SavedCitiesRow(
-                        cities = state.savedCities,
-                        onCityClick = { city ->
-                            onQueryChange(city)
-                            onSearchCity()
-                        },
-                        onMoreClick = { hidden ->
-                            hiddenForSheet = hidden
-                            showSheet = true
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(16.dp)
-                    )
+                    if (state.savedCities.isNotEmpty()) {
+                        SavedCitiesRow(
+                            cities = state.savedCities,
+                            onCityClick = { city ->
+                                onQueryChange(city)
+                                onSearchCity()
+                            },
+                            onMoreClick = { hidden ->
+                                hiddenForSheet = hidden
+                                showSheet = true
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(16.dp)
+                        )
+                    }
 
                     if (showSheet) {
                         HiddenCitiesSheet(

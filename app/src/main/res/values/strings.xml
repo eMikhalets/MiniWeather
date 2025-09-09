@@ -19,4 +19,13 @@
     <string name="second_format_minute">%dм</string>
     <string name="pressure_value">%1$d м.р.с.</string>
     <string name="next_24h">Ближайшие 24 часа</string>
+    <string name="location_permission_denied">Доступ к местоположению запрещён</string>
+    <string name="location_services_disabled">Службы геолокации выключены</string>
+    <string name="permission_needed">Нужно разрешение</string>
+    <string name="permission_location_rationale">Приложению нужно приблизительное местоположение, чтобы показать погоду рядом с вами.</string>
+    <string name="permission_denied">Доступ запрещён</string>
+    <string name="permission_denied_settings_hint">Вы запретили доступ навсегда. Откройте настройки приложения, чтобы выдать разрешение.</string>
+    <string name="open_settings">Открыть настройки</string>
+    <string name="allow">Разрешить</string>
+    <string name="cancel">Отмена</string>
 </resources>

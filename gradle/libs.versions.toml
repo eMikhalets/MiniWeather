@@ -16,6 +16,8 @@ jakewhartonRetrofit2Converter = "1.0.0"
 jakewhartonTimber = "5.0.1"
 coil = "3.3.0"
 hiltCompose = "1.2.0"
+googleLocation = "21.3.0"
+jetbrainsCoroutinesPlayServices = "1.10.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,6 +45,8 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 androidx-hilt-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltCompose" }
 jakewharton-timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "jakewhartonTimber" }
+google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "googleLocation" }
+jetbrains-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "jetbrainsCoroutinesPlayServices" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

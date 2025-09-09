@@ -1,5 +1,8 @@
 package com.emikhalets.miniweather.core
 
+import android.content.Context
+import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -12,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import timber.log.Timber
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -20,6 +24,7 @@ fun Double?.roundToIntOrDash(): String {
     return try {
         roundToInt().toString()
     } catch (e: Exception) {
+        Timber.e(e)
         "—"
     }
 }
@@ -63,4 +68,12 @@ fun rememberShimmerBrush(
         start = start,
         end = end
     )
+}
+
+fun Context.toast(message: String) {
+    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+}
+
+fun Context.toast(@StringRes resId: Int) {
+    Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
 }
