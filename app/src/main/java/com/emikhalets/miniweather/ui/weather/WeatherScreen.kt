@@ -80,6 +80,7 @@ import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.random.Random
 
 @Composable
 fun WeatherScreen(
@@ -121,11 +122,11 @@ fun WeatherScreen(
 @Composable
 private fun ScreenRoot(
     state: WeatherUiState,
-    onPullRefresh: () -> Unit,
-    onQueryChange: (String) -> Unit,
-    onSearchCity: () -> Unit,
-    onLocationClick: () -> Unit,
-    onRetryClick: () -> Unit,
+    onPullRefresh: () -> Unit = {},
+    onQueryChange: (String) -> Unit = {},
+    onSearchCity: () -> Unit = {},
+    onLocationClick: () -> Unit = {},
+    onRetryClick: () -> Unit = {},
 ) {
     val focus = LocalFocusManager.current
     val scope = rememberCoroutineScope()
@@ -645,23 +646,29 @@ private fun HourCard(hour: ForecastModel.Hour, tzOffsetSec: Int) {
     }
 }
 
-@Preview
-@Composable
-private fun Preview1() {
-    val weather = WeatherModel(
+// ==============
+//  Preview Data
+// ==============
+
+private fun previewWeatherGenerator(): WeatherModel {
+    val now = System.currentTimeMillis()
+    return WeatherModel(
         city = "Москва",
-        temperature = 21.0,
-        feelsLike = 18.0,
-        humidity = 65,
-        windSpeed = 2.5,
-        description = "Какое-то описание хз",
+        temperature = Random.nextDouble(-15.0, 30.0),
+        feelsLike = Random.nextDouble(-15.0, 30.0),
+        humidity = Random.nextInt(50, 85),
+        windSpeed = Random.nextDouble(0.5, 3.0),
+        description = "Описание погоды",
         iconUrl = "",
-        updatedAt = System.currentTimeMillis(),
-        pressure = 762,
-        sunrise = System.currentTimeMillis() - 500000,
-        sunset = System.currentTimeMillis() + 300000,
+        updatedAt = Random.nextLong(now - 1000 * 60 * 60 * 24, now),
+        pressure = Random.nextInt(740, 770),
+        sunrise = now - 500000,
+        sunset = now + 300000,
         timeOffset = 3,
     )
+}
+
+private fun previewForecastGenerator(): ForecastModel {
     val hours = (0 until 8).map { i ->
         ForecastModel.Hour(
             timeEpoch = System.currentTimeMillis() / 1000 + i * 3 * 3600,
@@ -671,119 +678,46 @@ private fun Preview1() {
             precipMm3h = if (i in 4..6) listOf(0.2, 0.6, 1.1)[i - 4] else null
         )
     }
-    val forecast = ForecastModel(
+    return ForecastModel(
         timeOffset = 3 * 3600,
         hours = hours
     )
+}
+
+@Preview
+@Composable
+private fun PreviewIdle() {
+    MiniWeatherTheme {
+        ScreenRoot(state = WeatherUiState(loading = LoadState.Idle))
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewLoading() {
+    MiniWeatherTheme {
+        ScreenRoot(state = WeatherUiState(loading = LoadState.Loading))
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewError() {
+    MiniWeatherTheme {
+        ScreenRoot(state = WeatherUiState(loading = LoadState.Error("Ошибка загрузки")))
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewData() {
     val state = WeatherUiState(
-        weather = weather,
-        forecast = forecast,
+        weather = previewWeatherGenerator(),
+        forecast = previewForecastGenerator(),
         query = "Лондон",
         savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
     )
     MiniWeatherTheme {
-        ScreenRoot(
-            state = state,
-            onQueryChange = {},
-            onSearchCity = {},
-            onLocationClick = {},
-            onRetryClick = {},
-            onPullRefresh = {},
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun Preview2() {
-    val weather = WeatherModel(
-        city = "Москва",
-        temperature = 15.0,
-        feelsLike = 18.0,
-        humidity = 65,
-        windSpeed = 2.5,
-        description = "Какое-то описание хз",
-        iconUrl = "",
-        updatedAt = System.currentTimeMillis(),
-        pressure = 762,
-        sunrise = 0,
-        sunset = System.currentTimeMillis() + 300000,
-        timeOffset = 3,
-    )
-    val hours = (0 until 8).map { i ->
-        ForecastModel.Hour(
-            timeEpoch = System.currentTimeMillis() / 1000 + i * 3 * 3600,
-            temperature = 15.0 + i,
-            iconUrl = "",
-            popPercent = listOf(10, 20, 30, 40, 50, 40, 30, 20)[i],
-            precipMm3h = if (i in 4..6) listOf(0.2, 0.6, 1.1)[i - 4] else null
-        )
-    }
-    val forecast = ForecastModel(
-        timeOffset = 3 * 3600,
-        hours = hours
-    )
-    val state = WeatherUiState(
-        weather = weather,
-        forecast = forecast,
-        savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
-    )
-    MiniWeatherTheme {
-        ScreenRoot(
-            state = state,
-            onQueryChange = {},
-            onSearchCity = {},
-            onLocationClick = {},
-            onRetryClick = {},
-            onPullRefresh = {},
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun Preview3() {
-    val state = WeatherUiState(loading = LoadState.Error("Ошибка загрузки"))
-    MiniWeatherTheme {
-        ScreenRoot(
-            state = state,
-            onQueryChange = {},
-            onSearchCity = {},
-            onLocationClick = {},
-            onRetryClick = {},
-            onPullRefresh = {},
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun Preview4() {
-    val state = WeatherUiState(loading = LoadState.Idle)
-    MiniWeatherTheme {
-        ScreenRoot(
-            state = state,
-            onQueryChange = {},
-            onSearchCity = {},
-            onLocationClick = {},
-            onRetryClick = {},
-            onPullRefresh = {},
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun Preview5() {
-    val state = WeatherUiState(loading = LoadState.Loading)
-    MiniWeatherTheme {
-        ScreenRoot(
-            state = state,
-            onQueryChange = {},
-            onSearchCity = {},
-            onLocationClick = {},
-            onRetryClick = {},
-            onPullRefresh = {},
-        )
+        ScreenRoot(state = state)
     }
 }
