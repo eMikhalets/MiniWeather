@@ -28,11 +28,6 @@ interface WeatherApi {
     ): ForecastDto
 
     @GET("data/2.5/air_pollution")
-    suspend fun getPollutionByCity(
-        @Query("q") city: String,
-    ): PollutionDto
-
-    @GET("data/2.5/air_pollution")
     suspend fun getPollutionByLocation(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,

@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class PollutionDto(
     @SerialName("coord")
-    val coordinates: List<Double?>? = null,
+    val coordinates: CoordDto? = null,
     @SerialName("list")
     val list: List<PollutionDataDto?>? = null,
 )

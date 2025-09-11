@@ -61,10 +61,6 @@ class RepositoryImpl @Inject constructor(
         return invoke { weatherApi.getForecastByLocation(latitude, longitude).mapToModel() }
     }
 
-    override suspend fun getPollutionByCity(city: String): Result<PollutionModel> {
-        return invoke { weatherApi.getPollutionByCity(city).mapToModel() }
-    }
-
     override suspend fun getPollutionByLocation(
         latitude: Double,
         longitude: Double,

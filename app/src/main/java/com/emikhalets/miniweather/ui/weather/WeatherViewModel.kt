@@ -77,14 +77,13 @@ class WeatherViewModel @Inject constructor(
             supervisorScope {
                 val weatherDef = async { repository.getByCity(query) }
                 val forecastDef = async { repository.getForecastByCity(query) }
-                val pollutionDef = async { repository.getPollutionByCity(query) }
 
                 weatherDef.await()
                     .onSuccess { weather ->
                         handleForecastDef(
                             weather = weather,
                             forecastDef = forecastDef,
-                            pollutionDef = pollutionDef,
+                            pollutionDef = null,
                             loadingMode = loadingMode,
                             query = query
                         )
@@ -141,7 +140,7 @@ class WeatherViewModel @Inject constructor(
     private suspend fun handleForecastDef(
         weather: WeatherModel,
         forecastDef: Deferred<Result<ForecastModel>>,
-        pollutionDef: Deferred<Result<PollutionModel>>,
+        pollutionDef: Deferred<Result<PollutionModel>>?,
         loadingMode: LoadingMode,
         query: String = "",
     ) {
@@ -169,12 +168,12 @@ class WeatherViewModel @Inject constructor(
     private suspend fun handlePollutionDef(
         weather: WeatherModel,
         forecast: ForecastModel,
-        pollutionDef: Deferred<Result<PollutionModel>>,
+        pollutionDef: Deferred<Result<PollutionModel>>?,
         loadingMode: LoadingMode,
         savedCities: List<String>,
     ) {
-        pollutionDef.await()
-            .onSuccess { pollution ->
+        pollutionDef?.await()
+            ?.onSuccess { pollution ->
                 _uiState.update {
                     it.copy(
                         weather = weather,
@@ -186,8 +185,17 @@ class WeatherViewModel @Inject constructor(
                     )
                 }
             }
-            .onFailure { error ->
+            ?.onFailure { error ->
                 handleError(error, "Ошибка", loadingMode)
+            }
+            ?: _uiState.update {
+                it.copy(
+                    weather = weather,
+                    forecast = forecast,
+                    loading = LoadState.Idle,
+                    refreshing = LoadState.Idle,
+                    savedCities = savedCities,
+                )
             }
     }
 

@@ -167,7 +167,6 @@ private fun ScreenRoot(
                                 )
                             }
                             state.airPollution?.let { data ->
-                                Spacer(Modifier.height(12.dp))
                                 AirQualityDetails(
                                     data = data,
                                     modifier = Modifier.padding(horizontal = 16.dp)
@@ -176,7 +175,8 @@ private fun ScreenRoot(
                             DaylightArc(
                                 sunriseEpochSec = state.weather.sunrise,
                                 sunsetEpochSec = state.weather.sunset,
-                                timezoneOffset = state.weather.timeOffset
+                                timezoneOffset = state.weather.timeOffset,
+                                modifier = Modifier.padding(horizontal = 16.dp)
                             )
                             Spacer(Modifier.height(80.dp))
                         }

@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
  * - dewPoint: в этом эндпоинте нет → оставляем null
  */
 fun WeatherDto.mapToModel(): WeatherModel {
-    Timber.d("Map current weather dto to model: $this")
+//    Timber.d("Map current weather dto to model: $this")
     val firstWeather = weather?.firstOrNull()
     return WeatherModel(
         city = name.orEmpty(),

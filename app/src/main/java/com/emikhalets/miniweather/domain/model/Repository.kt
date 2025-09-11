@@ -16,8 +16,6 @@ interface Repository {
 
     // Air pollution
 
-    suspend fun getPollutionByCity(city: String): Result<PollutionModel>
-
     suspend fun getPollutionByLocation(latitude: Double, longitude: Double): Result<PollutionModel>
 
     // Saved cities
