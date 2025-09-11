@@ -1,66 +1,43 @@
 package com.emikhalets.miniweather.data.local
 
 import android.content.Context
-import kotlinx.coroutines.CoroutineDispatcher
+import android.content.SharedPreferences
+import androidx.core.content.edit
+import com.emikhalets.miniweather.domain.model.CityModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.Normalizer
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class CityIndex @Inject constructor(
     private val context: Context,
+    private val prefs: SharedPreferences,
+    private val cityDao: CityDao,
 ) {
-    private val namesRef = AtomicReference<List<String>>(emptyList())
-    private val normRef = AtomicReference<List<String>>(emptyList())
+    private val savedKey = "cities_saved"
 
-    suspend fun ensureLoaded(dispatcher: CoroutineDispatcher = Dispatchers.IO) {
-        if (namesRef.get().isNotEmpty()) return
-        withContext(dispatcher) {
-            if (namesRef.get().isNotEmpty()) return@withContext
-            val list = context.assets.open("cities_ru.txt")
-                .bufferedReader(Charsets.UTF_8)
-                .useLines { seq ->
-                    seq.map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                        .distinct()
-                        .toList()
+    suspend fun suggestions(query: String, limit: Int = 12): List<String> {
+        if (query.isBlank()) return emptyList()
+        saveIfNeeded()
+        return cityDao.suggestPrefix(query, limit)
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private suspend fun saveIfNeeded() {
+        if (prefs.getBoolean(savedKey, false)) return
+        withContext(Dispatchers.IO) {
+            context.assets.open("cities_ru.json").use { input ->
+                val json = Json { ignoreUnknownKeys = true }
+                val list = json.decodeFromStream<List<CityModel>>(input)
+                list.chunked(1000).forEach { chunk ->
+                    cityDao.insertAll(chunk.map { CityDb(0, it.name, it.pop) })
                 }
-            val normalized = list.map(::normalize)
-            namesRef.set(list)
-            normRef.set(normalized)
-        }
-    }
-
-    /**
-     * Поиск по prefix/substring (без диакритики, регистронезависимый).
-     */
-    fun search(query: String, limit: Int = 12): List<String> {
-        val q = normalize(query)
-        if (q.isBlank()) return emptyList()
-        val names = namesRef.get()
-        val norms = normRef.get()
-        val out = ArrayList<String>(limit)
-        for (i in norms.indices) {
-            val n = norms[i]
-            if (n.startsWith(q) || n.contains(q)) {
-                out += names[i]
-                if (out.size >= limit) break
             }
+            prefs.edit { putBoolean(savedKey, true) }
         }
-        return out
-    }
-
-    private fun normalize(s: String): String {
-        val noMarks = Normalizer.normalize(s, Normalizer.Form.NFD)
-            .replace(Regex("\\p{Mn}+"), "")
-        return noMarks
-            .lowercase()
-            .replace('’', '\'')
-            .replace('‘', '\'')
-            .replace('`', '\'')
-            .trim()
     }
 }

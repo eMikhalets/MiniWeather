@@ -87,6 +87,9 @@ dependencies {
     implementation(libs.jakewharton.timber)
     implementation(libs.google.location)
     implementation(libs.jetbrains.coroutines.play.services)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
 
     // Testing
     testImplementation(libs.junit)
