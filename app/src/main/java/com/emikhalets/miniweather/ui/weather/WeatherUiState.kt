@@ -2,6 +2,7 @@ package com.emikhalets.miniweather.ui.weather
 
 import com.emikhalets.miniweather.core.LoadState
 import com.emikhalets.miniweather.domain.model.ForecastModel
+import com.emikhalets.miniweather.domain.model.PollutionModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
 
 data class WeatherUiState(
@@ -12,4 +13,5 @@ data class WeatherUiState(
     val refreshing: LoadState = LoadState.Idle,
     val savedCities: List<String> = emptyList(),
     val location: Pair<Double, Double>? = null,
+    val airPollution: PollutionModel? = null,
 )

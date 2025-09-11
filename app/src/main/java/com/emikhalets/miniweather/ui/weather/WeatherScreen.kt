@@ -62,6 +62,7 @@ import com.emikhalets.miniweather.core.roundToIntOrDash
 import com.emikhalets.miniweather.core.theme.MiniWeatherTheme
 import com.emikhalets.miniweather.core.toast
 import com.emikhalets.miniweather.domain.model.ForecastModel
+import com.emikhalets.miniweather.domain.model.PollutionModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -163,6 +164,13 @@ private fun ScreenRoot(
                                 HourlyForecastRow(
                                     forecast = it,
                                     modifier = Modifier
+                                )
+                            }
+                            state.airPollution?.let { data ->
+                                Spacer(Modifier.height(12.dp))
+                                AirQualityDetails(
+                                    data = data,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                             }
                             DaylightArc(
@@ -615,6 +623,29 @@ private fun PreviewDataOnlyMain() {
         forecast = previewForecastGenerator(),
         query = "Лондон",
         savedCities = listOf("Москва", "Лондон", "Сыктывкар", "Тында", "Бахчи-Сарай")
+    )
+    MiniWeatherTheme {
+        ScreenRoot(state = state)
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewDataPollution() {
+    val state = WeatherUiState(
+        weather = previewWeatherGenerator(onlyMain = true),
+        airPollution = PollutionModel(
+            aqi = Random.nextInt(1, 6),
+            updatedAt = System.currentTimeMillis() / 1000,
+            co = Random.nextDouble(0.0, 15400.0),
+            no = Random.nextDouble(0.0, 1.0),
+            no2 = Random.nextDouble(0.0, 200.0),
+            o3 = Random.nextDouble(0.0, 180.0),
+            so2 = Random.nextDouble(0.0, 350.0),
+            pm2_5 = Random.nextDouble(0.0, 75.0),
+            pm10 = Random.nextDouble(0.0, 200.0),
+            nh3 = Random.nextDouble(0.0, 1.0),
+        ),
     )
     MiniWeatherTheme {
         ScreenRoot(state = state)
