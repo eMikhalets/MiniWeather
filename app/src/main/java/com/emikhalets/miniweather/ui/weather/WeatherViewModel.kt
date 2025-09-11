@@ -228,7 +228,7 @@ class WeatherViewModel @Inject constructor(
                     weather = weather,
                     forecast = forecast,
                     loading = LoadState.Idle,
-                    refreshing = LoadState.Idle,
+                    refresh = LoadState.Idle,
                     savedCities = savedCities,
                 )
             }
