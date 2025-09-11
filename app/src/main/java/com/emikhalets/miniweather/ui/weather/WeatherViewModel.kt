@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.emikhalets.miniweather.core.LoadState
 import com.emikhalets.miniweather.data.LocationSource
 import com.emikhalets.miniweather.domain.model.ForecastModel
+import com.emikhalets.miniweather.domain.model.PollutionModel
 import com.emikhalets.miniweather.domain.model.Repository
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,7 +80,13 @@ class WeatherViewModel @Inject constructor(
 
                 weatherDef.await()
                     .onSuccess { weather ->
-                        handleForecastDef(weather, forecastDef, loadingMode, query)
+                        handleForecastDef(
+                            weather = weather,
+                            forecastDef = forecastDef,
+                            pollutionDef = null,
+                            loadingMode = loadingMode,
+                            query = query
+                        )
                     }
                     .onFailure { error ->
                         forecastDef.cancel()
@@ -113,10 +120,16 @@ class WeatherViewModel @Inject constructor(
         supervisorScope {
             val weatherDef = async { repository.getByLocation(latitude, longitude) }
             val forecastDef = async { repository.getForecastByLocation(latitude, longitude) }
+            val pollutionDef = async { repository.getPollutionByLocation(latitude, longitude) }
 
             weatherDef.await()
                 .onSuccess { weather ->
-                    handleForecastDef(weather, forecastDef, loadingMode)
+                    handleForecastDef(
+                        weather = weather,
+                        forecastDef = forecastDef,
+                        pollutionDef = pollutionDef,
+                        loadingMode = loadingMode
+                    )
                 }
                 .onFailure { error ->
                     handleError(error, "Ошибка", loadingMode)
@@ -127,6 +140,7 @@ class WeatherViewModel @Inject constructor(
     private suspend fun handleForecastDef(
         weather: WeatherModel,
         forecastDef: Deferred<Result<ForecastModel>>,
+        pollutionDef: Deferred<Result<PollutionModel>>?,
         loadingMode: LoadingMode,
         query: String = "",
     ) {
@@ -138,18 +152,50 @@ class WeatherViewModel @Inject constructor(
 
         forecastDef.await()
             .onSuccess { forecast ->
+                handlePollutionDef(
+                    weather = weather,
+                    forecast = forecast,
+                    pollutionDef = pollutionDef,
+                    loadingMode = loadingMode,
+                    savedCities = cities
+                )
+            }
+            .onFailure { error ->
+                handleError(error, "Ошибка", loadingMode)
+            }
+    }
+
+    private suspend fun handlePollutionDef(
+        weather: WeatherModel,
+        forecast: ForecastModel,
+        pollutionDef: Deferred<Result<PollutionModel>>?,
+        loadingMode: LoadingMode,
+        savedCities: List<String>,
+    ) {
+        pollutionDef?.await()
+            ?.onSuccess { pollution ->
                 _uiState.update {
                     it.copy(
                         weather = weather,
                         forecast = forecast,
+                        airPollution = pollution,
                         loading = LoadState.Idle,
                         refreshing = LoadState.Idle,
-                        savedCities = cities
+                        savedCities = savedCities,
                     )
                 }
             }
-            .onFailure { error ->
+            ?.onFailure { error ->
                 handleError(error, "Ошибка", loadingMode)
+            }
+            ?: _uiState.update {
+                it.copy(
+                    weather = weather,
+                    forecast = forecast,
+                    loading = LoadState.Idle,
+                    refreshing = LoadState.Idle,
+                    savedCities = savedCities,
+                )
             }
     }
 

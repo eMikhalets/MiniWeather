@@ -14,6 +14,10 @@ interface Repository {
 
     suspend fun getForecastByLocation(latitude: Double, longitude: Double): Result<ForecastModel>
 
+    // Air pollution
+
+    suspend fun getPollutionByLocation(latitude: Double, longitude: Double): Result<PollutionModel>
+
     // Saved cities
 
     fun getSavedCities(): List<String>

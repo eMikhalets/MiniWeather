@@ -28,4 +28,24 @@
     <string name="open_settings">Открыть настройки</string>
     <string name="allow">Разрешить</string>
     <string name="cancel">Отмена</string>
+    <string name="air_pollution_value">Загрязенние воздуха: %1$s (AQI %2$d)</string>
+    <string name="air_quality">Качество воздуха:</string>
+    <string name="air_quality_value">%1$s (AQI %2$d)</string>
+    <string name="air_quality_meature_value">%1$s µg/m³</string>
+
+    <string name="air_quality_good">Хорошее</string>
+    <string name="air_quality_fair">Удовлетв.</string>
+    <string name="air_quality_moderate">Умеренное</string>
+    <string name="air_quality_poor">Плохое</string>
+    <string name="air_quality_very_poor">Очень плохое</string>
+    <string name="air_quality_na">Нет данных</string>
+
+    <string name="air_quality_aqi">Качество воздуха</string>
+    <string name="air_quality_pm">Частицы</string>
+    <string name="air_quality_o3">Озон</string>
+    <string name="air_quality_no2">Диоксид азота</string>
+    <string name="air_quality_so2">Диоксид серы</string>
+    <string name="air_quality_co">Оксид углерода</string>
+    <string name="air_quality_no">Оксид азота</string>
+    <string name="air_quality_nh3">Аммиак</string>
 </resources>

@@ -75,7 +75,7 @@ fun DaylightArc(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
-                .padding(top = 4.dp)
+                .padding(top = 6.dp)
         ) {
             // диаметр дуги ограничим шириной холста и высотой*2 (чтобы влезла верхняя полусфера)
             val diameter = min(size.width, size.height * 2f)

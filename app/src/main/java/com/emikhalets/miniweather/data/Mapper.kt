@@ -2,9 +2,11 @@ package com.emikhalets.miniweather.data
 
 import com.emikhalets.miniweather.data.remote.ForecastDto
 import com.emikhalets.miniweather.data.remote.ForecastItemDto
+import com.emikhalets.miniweather.data.remote.PollutionDto
 import com.emikhalets.miniweather.data.remote.WeatherDataDto
 import com.emikhalets.miniweather.data.remote.WeatherDto
 import com.emikhalets.miniweather.domain.model.ForecastModel
+import com.emikhalets.miniweather.domain.model.PollutionModel
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -16,7 +18,7 @@ import kotlin.math.roundToInt
  * - dewPoint: в этом эндпоинте нет → оставляем null
  */
 fun WeatherDto.mapToModel(): WeatherModel {
-    Timber.d("Map current weather dto to model: $this")
+//    Timber.d("Map current weather dto to model: $this")
     val firstWeather = weather?.firstOrNull()
     return WeatherModel(
         city = name.orEmpty(),
@@ -43,6 +45,24 @@ fun ForecastDto.mapToModel(): ForecastModel {
     return ForecastModel(
         timeOffset = tz,
         hours = hours
+    )
+}
+
+fun PollutionDto.mapToModel(): PollutionModel {
+    val item = list.orEmpty().firstOrNull()
+    val aqi = item?.main?.aqi
+    val component = item?.components
+    return PollutionModel(
+        aqi = aqi?.coerceIn(1, 5) ?: 0,
+        updatedAt = item?.dt?.toLong() ?: 0L,
+        co = component?.co,
+        no = component?.no,
+        no2 = component?.no2,
+        o3 = component?.o3,
+        so2 = component?.so2,
+        pm2_5 = component?.pm25,
+        pm10 = component?.pm10,
+        nh3 = component?.nh3
     )
 }
 
