@@ -18,11 +18,11 @@ interface Repository {
 
     suspend fun getPollutionByLocation(latitude: Double, longitude: Double): Result<PollutionModel>
 
-    // Saved cities
+    // Local cities
 
-    fun getSavedCities(): List<String>
+    suspend fun getSavedCities(): List<String>
 
-    fun addOrPromoteCity(value: String): List<String>
+    suspend fun addOrPromoteCity(value: String): List<String>
 
-    fun promoteCity(value: String): List<String>
+    suspend fun searchCities(query: String, limit: Int = 12): List<String>
 }

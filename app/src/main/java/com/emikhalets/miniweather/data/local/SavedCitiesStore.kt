@@ -32,8 +32,6 @@ class SavedCitiesStore @Inject constructor(
         return clipped
     }
 
-    fun promote(city: String): List<String> = addOrPromote(city)
-
     fun remove(city: String): List<String> {
         val list = loadInternal().toMutableList().apply {
             removeAll { it.equals(city, ignoreCase = true) }

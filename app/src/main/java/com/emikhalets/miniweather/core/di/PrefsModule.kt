@@ -15,6 +15,6 @@ object PrefsModule {
 
     @Provides
     @Singleton
-    fun providePrefs(@ApplicationContext ctx: Context): SharedPreferences =
-        ctx.getSharedPreferences("mini_weather_prefs", Context.MODE_PRIVATE)
+    fun providePrefs(@ApplicationContext context: Context): SharedPreferences =
+        context.getSharedPreferences("mini_weather_prefs", Context.MODE_PRIVATE)
 }

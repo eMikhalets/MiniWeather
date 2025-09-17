@@ -1,5 +1,6 @@
 package com.emikhalets.miniweather.data
 
+import com.emikhalets.miniweather.data.local.CityIndex
 import com.emikhalets.miniweather.data.local.SavedCitiesStore
 import com.emikhalets.miniweather.data.remote.WeatherApi
 import com.emikhalets.miniweather.domain.model.ForecastModel
@@ -17,6 +18,7 @@ import javax.inject.Singleton
 class RepositoryImpl @Inject constructor(
     private val weatherApi: WeatherApi,
     private val citiesStore: SavedCitiesStore,
+    private val cityIndex: CityIndex,
 ) : Repository {
 
     // TODO тексты ошибок в обработчик в ui
@@ -68,15 +70,18 @@ class RepositoryImpl @Inject constructor(
         return invoke { weatherApi.getPollutionByLocation(latitude, longitude).mapToModel() }
     }
 
-    override fun getSavedCities(): List<String> {
+    override suspend fun getSavedCities(): List<String> {
+        cityIndex.saveIfNeeded()
         return citiesStore.load()
     }
 
-    override fun addOrPromoteCity(value: String): List<String> {
+    override suspend fun addOrPromoteCity(value: String): List<String> {
         return citiesStore.addOrPromote(value)
     }
 
-    override fun promoteCity(value: String): List<String> {
-        return citiesStore.promote(value)
+    override suspend fun searchCities(query: String, limit: Int): List<String> {
+        return withContext(Dispatchers.Default) {
+            cityIndex.search(query, limit)
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.emikhalets.miniweather.core.di
 
 import com.emikhalets.miniweather.data.RepositoryImpl
+import com.emikhalets.miniweather.data.local.CityIndex
 import com.emikhalets.miniweather.data.local.SavedCitiesStore
 import com.emikhalets.miniweather.data.remote.WeatherApi
 import com.emikhalets.miniweather.domain.model.Repository
@@ -19,7 +20,8 @@ object RepositoryModule {
     fun provideRepository(
         weatherApi: WeatherApi,
         citiesStore: SavedCitiesStore,
+        cityIndex: CityIndex,
     ): Repository {
-        return RepositoryImpl(weatherApi, citiesStore)
+        return RepositoryImpl(weatherApi, citiesStore, cityIndex)
     }
 }

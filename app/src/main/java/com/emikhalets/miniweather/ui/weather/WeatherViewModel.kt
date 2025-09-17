@@ -10,16 +10,25 @@ import com.emikhalets.miniweather.domain.model.Repository
 import com.emikhalets.miniweather.domain.model.WeatherModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import javax.inject.Inject
 
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
     private val repository: Repository,
@@ -34,11 +43,42 @@ class WeatherViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
-        _uiState.update { it.copy(savedCities = repository.getSavedCities()) }
+        viewModelScope.launch {
+            val cities = repository.getSavedCities()
+            _uiState.update {
+                it.copy(savedCities = cities, init = false)
+            }
+        }
+
+        // Cities in search text field
+        viewModelScope.launch {
+            uiState.map { it.query }
+                .debounce(250)
+                .distinctUntilChanged()
+                .flatMapLatest { q ->
+                    flow {
+                        if (q.isBlank()) emit(emptyList())
+                        else emit(repository.searchCities(q, limit = 12))
+                    }
+                }
+                .catch { emit(emptyList()) }
+                .collect { list ->
+                    _uiState.update { it.copy(suggestions = list) }
+                }
+        }
+    }
+
+    fun pickSuggestion(city: String) {
+        _uiState.update { it.copy(query = city, suggestions = emptyList()) }
+        search()
+    }
+
+    fun clearSuggestions() {
+        _uiState.update { it.copy(suggestions = emptyList()) }
     }
 
     fun consumeRefreshState() {
-        _uiState.update { it.copy(refreshing = LoadState.Idle) }
+        _uiState.update { it.copy(refresh = LoadState.Idle) }
     }
 
     fun setQuery(value: String) {
@@ -180,7 +220,7 @@ class WeatherViewModel @Inject constructor(
                         forecast = forecast,
                         airPollution = pollution,
                         loading = LoadState.Idle,
-                        refreshing = LoadState.Idle,
+                        refresh = LoadState.Idle,
                         savedCities = savedCities,
                     )
                 }
@@ -193,7 +233,7 @@ class WeatherViewModel @Inject constructor(
                     weather = weather,
                     forecast = forecast,
                     loading = LoadState.Idle,
-                    refreshing = LoadState.Idle,
+                    refresh = LoadState.Idle,
                     savedCities = savedCities,
                 )
             }
@@ -208,15 +248,15 @@ class WeatherViewModel @Inject constructor(
         _uiState.update {
             when (loadingMode) {
                 LoadingMode.Load -> {
-                    it.copy(loading = state, refreshing = LoadState.Idle)
+                    it.copy(loading = state, refresh = LoadState.Idle)
                 }
 
                 LoadingMode.Refresh -> {
-                    it.copy(loading = uiState.value.loading, refreshing = state)
+                    it.copy(loading = uiState.value.loading, refresh = state)
                 }
 
                 LoadingMode.Idle -> {
-                    it.copy(loading = LoadState.Idle, refreshing = LoadState.Idle)
+                    it.copy(loading = LoadState.Idle, refresh = LoadState.Idle)
                 }
             }
         }
@@ -228,6 +268,6 @@ class WeatherViewModel @Inject constructor(
             LoadingMode.Refresh -> uiState.value.loading to LoadState.Loading
             LoadingMode.Idle -> LoadState.Idle to LoadState.Idle
         }
-        _uiState.update { it.copy(loading = loadingState, refreshing = refreshState) }
+        _uiState.update { it.copy(loading = loadingState, refresh = refreshState) }
     }
 }
