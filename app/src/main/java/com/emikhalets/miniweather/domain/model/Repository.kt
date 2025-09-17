@@ -24,7 +24,5 @@ interface Repository {
 
     suspend fun addOrPromoteCity(value: String): List<String>
 
-    suspend fun promoteCity(value: String): List<String>
-
     suspend fun searchCities(query: String, limit: Int = 12): List<String>
 }

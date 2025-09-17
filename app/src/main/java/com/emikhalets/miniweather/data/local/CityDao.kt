@@ -13,11 +13,11 @@ interface CityDao {
 
     @Query(
         """
-        SELECT name_ru FROM cities
-        WHERE name_ru LIKE :query || '%' ESCAPE '\'
-        ORDER BY (pop IS NULL), pop DESC
-        LIMIT :limit
+            SELECT name FROM cities
+            WHERE name COLLATE NOCASE LIKE '%' || :query || '%' ESCAPE '\'
+            ORDER BY (pop IS NULL), pop DESC
+            LIMIT :limit
         """
     )
-    suspend fun suggestPrefix(query: String, limit: Int): List<String>
+    suspend fun suggest(query: String, limit: Int): List<String>
 }

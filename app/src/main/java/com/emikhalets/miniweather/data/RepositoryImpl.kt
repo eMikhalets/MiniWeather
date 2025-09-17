@@ -79,14 +79,9 @@ class RepositoryImpl @Inject constructor(
         return citiesStore.addOrPromote(value)
     }
 
-    override suspend fun promoteCity(value: String): List<String> {
-        return citiesStore.promote(value)
-    }
-
     override suspend fun searchCities(query: String, limit: Int): List<String> {
         return withContext(Dispatchers.Default) {
-            emptyList()
-//            cityIndex.search(query, limit)
+            cityIndex.search(query, limit)
         }
     }
 }
