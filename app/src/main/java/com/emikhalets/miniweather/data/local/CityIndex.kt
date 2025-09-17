@@ -27,7 +27,7 @@ class CityIndex @Inject constructor(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    private suspend fun saveIfNeeded() {
+    suspend fun saveIfNeeded() {
         if (prefs.getBoolean(savedKey, false)) return
         withContext(Dispatchers.IO) {
             context.assets.open("cities_ru.json").use { input ->

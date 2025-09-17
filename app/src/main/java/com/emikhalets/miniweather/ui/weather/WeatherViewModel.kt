@@ -43,7 +43,12 @@ class WeatherViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
-        _uiState.update { it.copy(savedCities = repository.getSavedCities()) }
+        viewModelScope.launch {
+            val cities = repository.getSavedCities()
+            _uiState.update {
+                it.copy(savedCities = cities, init = false)
+            }
+        }
 
         // Cities in search text field
         viewModelScope.launch {

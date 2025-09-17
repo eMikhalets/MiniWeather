@@ -39,9 +39,7 @@ object LocalModule {
 
     @Provides
     @Singleton
-    fun provideCitiesDao(
-        @ApplicationContext database: AppDatabase,
-    ): CityDao {
+    fun provideCitiesDao(database: AppDatabase): CityDao {
         return database.cityDao()
     }
 
@@ -49,8 +47,8 @@ object LocalModule {
     @Singleton
     fun provideCityIndex(
         @ApplicationContext context: Context,
-        @ApplicationContext prefs: SharedPreferences,
-        @ApplicationContext citiesDao: CityDao,
+        prefs: SharedPreferences,
+        citiesDao: CityDao,
     ): CityIndex {
         return CityIndex(context, prefs, citiesDao)
     }

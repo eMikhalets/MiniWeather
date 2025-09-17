@@ -70,22 +70,23 @@ class RepositoryImpl @Inject constructor(
         return invoke { weatherApi.getPollutionByLocation(latitude, longitude).mapToModel() }
     }
 
-    override fun getSavedCities(): List<String> {
+    override suspend fun getSavedCities(): List<String> {
+        cityIndex.saveIfNeeded()
         return citiesStore.load()
     }
 
-    override fun addOrPromoteCity(value: String): List<String> {
+    override suspend fun addOrPromoteCity(value: String): List<String> {
         return citiesStore.addOrPromote(value)
     }
 
-    override fun promoteCity(value: String): List<String> {
+    override suspend fun promoteCity(value: String): List<String> {
         return citiesStore.promote(value)
     }
 
     override suspend fun searchCities(query: String, limit: Int): List<String> {
-        cityIndex.ensureLoaded()
         return withContext(Dispatchers.Default) {
-            cityIndex.search(query, limit)
+            emptyList()
+//            cityIndex.search(query, limit)
         }
     }
 }

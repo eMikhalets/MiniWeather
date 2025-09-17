@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -128,7 +129,29 @@ private fun ScreenRoot(
     onPickSuggestion: (String) -> Unit = {},
     onDismissSuggestions: () -> Unit = {},
 ) {
-    RootScaffoldBox(onLocationClick) {
+    RootScaffoldBox(init = state.init, onLocationClick = onLocationClick) {
+        if (state.init) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                Text(
+                    text = stringResource(R.string.init_application),
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(16.dp))
+                CircularProgressIndicator()
+            }
+            return@RootScaffoldBox
+        }
+
         PullRefreshBox(
             query = state.query,
             refreshing = state.refresh,
@@ -214,6 +237,7 @@ private fun ScreenRoot(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RootScaffoldBox(
+    init: Boolean,
     onLocationClick: () -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -222,7 +246,7 @@ private fun RootScaffoldBox(
             TopAppBar(
                 title = { Text(stringResource(R.string.weather)) },
                 actions = {
-                    IconButton(onClick = onLocationClick) {
+                    IconButton(enabled = !init, onClick = onLocationClick) {
                         Icon(
                             imageVector = Icons.Default.MyLocation,
                             contentDescription = stringResource(R.string.my_location)
@@ -637,9 +661,17 @@ private fun previewForecastGenerator(): ForecastModel {
 
 @Preview
 @Composable
+private fun PreviewInit() {
+    MiniWeatherTheme {
+        ScreenRoot(state = WeatherUiState(init = true))
+    }
+}
+
+@Preview
+@Composable
 private fun PreviewIdle() {
     MiniWeatherTheme {
-        ScreenRoot(state = WeatherUiState(loading = LoadState.Idle))
+        ScreenRoot(state = WeatherUiState(init = false, loading = LoadState.Idle))
     }
 }
 
@@ -647,7 +679,7 @@ private fun PreviewIdle() {
 @Composable
 private fun PreviewLoading() {
     MiniWeatherTheme {
-        ScreenRoot(state = WeatherUiState(loading = LoadState.Loading))
+        ScreenRoot(state = WeatherUiState(init = false, loading = LoadState.Loading))
     }
 }
 
@@ -655,7 +687,12 @@ private fun PreviewLoading() {
 @Composable
 private fun PreviewError() {
     MiniWeatherTheme {
-        ScreenRoot(state = WeatherUiState(loading = LoadState.Error("Ошибка загрузки")))
+        ScreenRoot(
+            state = WeatherUiState(
+                init = false,
+                loading = LoadState.Error("Ошибка загрузки")
+            )
+        )
     }
 }
 
@@ -663,6 +700,7 @@ private fun PreviewError() {
 @Composable
 private fun PreviewData() {
     val state = WeatherUiState(
+        init = false,
         weather = previewWeatherGenerator(),
         forecast = previewForecastGenerator(),
         query = "Лондон",
@@ -677,6 +715,7 @@ private fun PreviewData() {
 @Composable
 private fun PreviewDataOnlyMain() {
     val state = WeatherUiState(
+        init = false,
         weather = previewWeatherGenerator(onlyMain = true),
         forecast = previewForecastGenerator(),
         query = "Лондон",
@@ -691,6 +730,7 @@ private fun PreviewDataOnlyMain() {
 @Composable
 private fun PreviewDataPollution() {
     val state = WeatherUiState(
+        init = false,
         weather = previewWeatherGenerator(onlyMain = true),
         airPollution = PollutionModel(
             aqi = Random.nextInt(1, 6),

@@ -1,6 +1,9 @@
 package com.emikhalets.miniweather.domain.model
 
-// Для парсинга assets
+import kotlinx.serialization.Serializable
+
+// Для парсинга городов из assets
+@Serializable
 data class CityModel(
     val name: String,
     val pop: Int? = null

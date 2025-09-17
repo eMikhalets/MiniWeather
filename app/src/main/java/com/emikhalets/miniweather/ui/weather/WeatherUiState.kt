@@ -9,6 +9,7 @@ data class WeatherUiState(
     val query: String = "",
     val weather: WeatherModel? = null,
     val forecast: ForecastModel? = null,
+    val init: Boolean = true,
     val loading: LoadState = LoadState.Idle,
     val refresh: LoadState = LoadState.Idle,
     val savedCities: List<String> = emptyList(),
