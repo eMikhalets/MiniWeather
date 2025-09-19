@@ -213,7 +213,6 @@ private fun ScreenRoot(
                             DaylightArc(
                                 sunriseEpochSec = state.weather.sunrise,
                                 sunsetEpochSec = state.weather.sunset,
-                                timezoneOffset = state.weather.timeOffset,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
                             Spacer(Modifier.height(80.dp))
@@ -637,8 +636,8 @@ private fun previewWeatherGenerator(onlyMain: Boolean = false): WeatherModel {
         iconUrl = "",
         updatedAt = Random.nextLong(now - 1000 * 60 * 60 * 24, now),
         pressure = Random.nextInt(740, 770),
-        sunrise = if (!onlyMain) now - 500000 else 0,
-        sunset = if (!onlyMain) now + 300000 else 0,
+        sunrise = if (!onlyMain) now - 10800000 else 0,
+        sunset = if (!onlyMain) now + 28800000 else 0,
         timeOffset = 3,
     )
 }
