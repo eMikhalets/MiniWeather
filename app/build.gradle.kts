@@ -37,9 +37,21 @@ android {
         buildConfigField("String", "weather_api_key", "\"$weatherApiKey\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(props.getProperty("sign.store"))
+            storePassword = props.getProperty("sign.storePass")
+            keyAlias = props.getProperty("sign.alias")
+            keyPassword = props.getProperty("sign.keyPass")
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
